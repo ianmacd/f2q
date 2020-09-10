@@ -1,8 +1,14 @@
 ################################################################################
-1. How to Build
+1. Download and unzip the kernel source of N986BXXU1ATH3.
+
+2. Unzip and update the kernel source of N986BXXS1ATH9.
+
+3. How to Build
         - get Toolchain
                 From android git server, codesourcery and etc ..
-                - gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+                - toolchain/gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+                - toolchain/clang/host/linux-x86/clang-r349610-jopp/bin/aarch64-linux-gnu-
+                
         - edit Makefile
                 edit "CROSS_COMPILE" to right toolchain path(You downloaded).
                         EX)  CROSS_COMPILE=<android platform directory you download>/android/prebuilts/gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-
