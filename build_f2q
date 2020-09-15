@@ -1,0 +1,26 @@
+#!/bin/bash -x
+
+export ARCH=arm64
+
+BUILD_CROSS_COMPILE=../toolchains/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+
+#KERNEL_LLVM_BIN=$(pwd)/toolchain/llvm-arm-toolchain-ship/8.0/bin/clang
+KERNEL_LLVM_BIN=../toolchains/clang+llvm-8.0.11/bin/clang
+CLANG_TRIPLE=aarch64-linux-gnu-
+
+KERNEL_MAKE_ENV="DTC_EXT=$(pwd)/tools/dtc CONFIG_BUILD_ARM64_DT_OVERLAY=y"
+
+# If not cleaning the tree between builds, the following command will be
+# required on 2nd and subsequent builds to prevent a huge slowdown of the
+# build.
+#
+# find techpack -type f -name \*.o | xargs rm -f
+
+make mrproper
+touch .scmversion
+
+#make -j$(nproc) $KERNEL_MAKE_ENV CROSS_COMPILE=$BUILD_CROSS_COMPILE REAL_CC=$KERNEL_LLVM_BIN CLANG_TRIPLE=$CLANG_TRIPLE CFP_CC=$KERNEL_LLVM_BIN vendor/f2q_eur_openx_defconfig
+
+make -j$(nproc) $KERNEL_MAKE_ENV CROSS_COMPILE=$BUILD_CROSS_COMPILE REAL_CC=$KERNEL_LLVM_BIN CLANG_TRIPLE=$CLANG_TRIPLE CFP_CC=$KERNEL_LLVM_BIN vendor/f2q_eur_openx_caliban_defconfig
+
+make -j$(nproc) $KERNEL_MAKE_ENV CROSS_COMPILE=$BUILD_CROSS_COMPILE REAL_CC=$KERNEL_LLVM_BIN CLANG_TRIPLE=$CLANG_TRIPLE CFP_CC=$KERNEL_LLVM_BIN
