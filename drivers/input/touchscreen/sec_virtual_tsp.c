@@ -283,6 +283,7 @@ static void sec_virtual_tsp_main_cmd(void *device_data)
 	sec_virtual_tsp_write_cmd(sec, main, sub);
 }
 
+#if defined(CONFIG_TOUCHSCREEN_SEC_TS_Y771_SUB)
 static void sec_virtual_tsp_sub_cmd(void *device_data)
 {
 	struct sec_cmd_data *sec = (struct sec_cmd_data *)device_data;
@@ -300,6 +301,7 @@ static void sec_virtual_tsp_sub_cmd(void *device_data)
 
 	sec_virtual_tsp_write_cmd(sec, main, sub);
 }
+#endif
 
 static void sec_virtual_tsp_switch_cmd(void *device_data)
 {
