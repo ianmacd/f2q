@@ -4896,7 +4896,7 @@ int ss_get_vdd_ndx_from_state(struct drm_atomic_state *old_state)
 
 	for (i = 0; i < sde_enc->num_phys_encs; i++) {
 		phys = sde_enc->phys_encs[i];
-		if (phys) {
+		if (phys && phys->connector) {
 			c_conn = to_sde_connector(phys->connector);
 			display = c_conn->display;
 			vdd = display->panel->panel_private;

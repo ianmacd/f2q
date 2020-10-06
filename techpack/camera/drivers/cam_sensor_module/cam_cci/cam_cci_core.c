@@ -9,6 +9,9 @@
 
 #define DUMP_CCI_REGISTERS
 
+static uint32_t cam_cci_wait(struct cci_device *, enum cci_i2c_master_t,
+	enum cci_i2c_queue_t );
+
 static int32_t cam_cci_convert_type_to_num_bytes(
 	enum camera_sensor_i2c_type type)
 {
@@ -139,24 +142,7 @@ static int32_t cam_cci_validate_queue(struct cci_device *cci_dev,
 		atomic_set(&cci_dev->cci_master_info[master].q_free[queue], 1);
 		spin_unlock_irqrestore(
 			&cci_dev->cci_master_info[master].lock_q[queue], flags);
-		rc = wait_for_completion_timeout(
-			&cci_dev->cci_master_info[master].report_q[queue],
-			CCI_TIMEOUT);
-		if (rc <= 0) {
-			CAM_ERR(CAM_CCI,
-				"Wait timeout cci: %d, Master:%d, report_q: %d, rc: %d",
-				cci_dev->soc_info.index, master, queue, rc);
-			if (rc == 0)
-				rc = -ETIMEDOUT;
-			cam_cci_flush_queue(cci_dev, master);
-			return rc;
-		}
-		rc = cci_dev->cci_master_info[master].status;
-		if (rc < 0) {
-			CAM_ERR(CAM_CCI, "cci: %d is in error state",
-				cci_dev->soc_info.index);
-			cci_dev->cci_master_info[master].status = 0;
-		}
+		rc = cam_cci_wait(cci_dev, master, queue);
 	}
 
 	return rc;
@@ -292,13 +278,25 @@ static uint32_t cam_cci_wait(struct cci_device *cci_dev,
 	CAM_DBG(CAM_CCI, "wait DONE_for_completion_timeout");
 
 	if (rc <= 0) {
+		void __iomem *base = cci_dev->soc_info.reg_map[0].mem_base;
+		uint32_t reg_offset = master * 0x200 + queue * 0x100;
+		uint32_t hw_pending_cnt = cam_io_r_mb(base +
+				CCI_I2C_M0_Q0_CUR_WORD_CNT_ADDR + reg_offset);
+		/* If HW not holding any pending command and no error from HW,
+		   ignore timeout */
+		if (hw_pending_cnt == 0)
+		{
+			CAM_INFO(CAM_CCI,
+				"Ignoring timeout for cci:%d, Maser:%d, Queue:%d",
+				cci_dev->soc_info.index, master, queue);
+		}
+		else if (rc == 0) {
 #ifdef DUMP_CCI_REGISTERS
-		cam_cci_dump_registers(cci_dev, master, queue);
+			cam_cci_dump_registers(cci_dev, master, queue);
 #endif
-		CAM_ERR(CAM_CCI,
-			"wait timeout for cci:%d, Maser:%d, Queue:%d, rc=%d",
-			cci_dev->soc_info.index, master, queue, rc);
-		if (rc == 0) {
+			CAM_ERR(CAM_CCI,
+				"wait timeout for cci:%d, Maser:%d, Queue:%d, rc=%d",
+				cci_dev->soc_info.index, master, queue, rc);
 			rc = -ETIMEDOUT;
 			cam_cci_flush_queue(cci_dev, master);
 			return rc;
@@ -312,7 +310,7 @@ static uint32_t cam_cci_wait(struct cci_device *cci_dev,
 		return rc;
 	}
 
-	return 0;
+	return rc;
 }
 
 static void cam_cci_load_report_cmd(struct cci_device *cci_dev,
@@ -1195,9 +1193,9 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 					CCI_I2C_M0_READ_BUF_LEVEL_ADDR +
 					master * 0x100);
 				CAM_ERR(CAM_CCI,
-					"wait timeout for RD_DONE irq for cci: %d, master: %d, rc = %d FIFO buf_lvl:0x%x, rc: %d",
+					"wait timeout for RD_DONE irq for cci: %d, master: %d, FIFO buf_lvl:0x%x, exp_words: %d",
 					cci_dev->soc_info.index, master,
-					val, rc);
+					val, exp_words);
 				#ifdef DUMP_CCI_REGISTERS
 					cam_cci_dump_registers(cci_dev,
 						master, queue);
@@ -1294,8 +1292,6 @@ static int32_t cam_cci_read(struct v4l2_subdev *sd,
 
 	mutex_lock(&cci_dev->cci_master_info[master].mutex_q[queue]);
 
-	// read operation done only in Q1 
-	reinit_completion(&cci_dev->cci_master_info[master].rd_done);
 	reinit_completion(&cci_dev->cci_master_info[master].report_q[queue]);
 	/*
 	 * Call validate queue to make sure queue is empty before starting.
@@ -1683,7 +1679,12 @@ static int32_t cam_cci_read_bytes(struct v4l2_subdev *sd,
 	 * THRESHOLD irq's, we reinit the threshold wait before
 	 * we load the burst read cmd.
 	 */
+	mutex_lock(&cci_dev->cci_master_info[master].mutex_q[QUEUE_1]);
+
+	reinit_completion(&cci_dev->cci_master_info[master].rd_done);
 	reinit_completion(&cci_dev->cci_master_info[master].th_complete);
+	
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex_q[QUEUE_1]);
 
 	CAM_DBG(CAM_CCI, "Bytes to read %u", read_bytes);
 	do {
@@ -1846,10 +1847,16 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 
-	if (cci_dev->cci_master_info[master].status < 0) {
-		CAM_WARN(CAM_CCI, "CCI hardware is resetting");
-		return -EAGAIN;
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if(!cci_dev->cci_master_info[master].is_initilized && 
+		cci_ctrl->cmd != MSM_CCI_INIT)
+	{
+		mutex_unlock(&cci_dev->cci_master_info[master].mutex);
+		CAM_ERR(CAM_CCI, "CCI Master:%d not initialized,cmd:%d", master, cci_ctrl->cmd);
+		return -EINVAL;
 	}
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
+
 	CAM_DBG(CAM_CCI, "master = %d, cmd = %d", master, cci_ctrl->cmd);
 
 	switch (cci_ctrl->cmd) {
