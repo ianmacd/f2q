@@ -114,9 +114,8 @@ int ipa3_register_intf_ext(const char *name, const struct ipa_tx_intf *tx,
 			kfree(intf);
 			return -ENOMEM;
 		}
+		memcpy(intf->tx, tx->prop, len);
 	}
-
-	memcpy(intf->tx, tx->prop, len);
 
 	if (rx) {
 		intf->num_rx_props = rx->num_props;

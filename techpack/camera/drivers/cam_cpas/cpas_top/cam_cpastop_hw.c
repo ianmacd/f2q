@@ -519,12 +519,12 @@ static int cam_cpastop_poweron(struct cam_hw_info *cpas_hw)
 		camnoc_info->errata_wa_list;
 	struct cam_cpas_hw_errata_wa *errata_wa =
 		&errata_wa_list->tcsr_camera_hf_sf_ares_glitch;
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+
 	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
 	struct cam_hw_soc_info *soc_info = &cpas_hw->soc_info;
 	int reg_base_index;
 	uint32_t value;
-#endif
+
 	cam_cpastop_reset_irq(cpas_hw);
 	for (i = 0; i < camnoc_info->specific_size; i++) {
 		if (camnoc_info->specific[i].enable) {
@@ -550,7 +550,7 @@ static int cam_cpastop_poweron(struct cam_hw_info *cpas_hw)
 		reg_val |= errata_wa->data.reg_info.value;
 		scm_io_write(errata_wa->data.reg_info.offset, reg_val);
 	}
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+
 	cpas_core = (struct cam_cpas *) cpas_hw->core_info;
 	soc_info = &cpas_hw->soc_info;
 	reg_base_index = cpas_core->regbase_index[CAM_CPAS_REG_CAMNOC];
@@ -588,7 +588,7 @@ static int cam_cpastop_poweron(struct cam_hw_info *cpas_hw)
 		0x2320);
 	value = cam_io_r_mb(soc_info->reg_map[reg_base_index].mem_base +
 		0x2324);
-#endif
+
 	return 0;
 }
 

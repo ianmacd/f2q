@@ -1052,9 +1052,9 @@ static int dfc_update_fc_map(struct net_device *dev, struct qos_info *qos,
 		itm->last_adjusted_grant = adjusted_grant;
 
 		if (action) {
-			net_log("I> m=%d b=%d gr=%d s=%d a=%d\n",
+			net_log("I> m=%d b=%d gr=%d agr=%d s=%d a=%d\n",
 				fc_info->mux_id, fc_info->bearer_id,
-				fc_info->num_bytes, fc_info->seq_num,
+				fc_info->num_bytes, itm->grant_size, fc_info->seq_num,
 				ancillary);
 			rc = dfc_bearer_flow_ctl(dev, itm, qos);
 		}

@@ -5874,6 +5874,16 @@ static int ss_hbm_brightness_packet_set(
 		update_packet_level_key_disable(vdd, packet, &cmd_cnt, level_key);
 	}
 
+	/* gamma compensation for gamma mode2 48/96hz VRR modes */
+	if (!IS_ERR_OR_NULL(vdd->panel_func.samsung_brightness_gm2_gamma_comp)) {
+		level_key = false;
+		tx_cmd = vdd->panel_func.samsung_brightness_gm2_gamma_comp(vdd, &level_key);
+
+		update_packet_level_key_enable(vdd, packet, &cmd_cnt, level_key);
+		ss_update_brightness_packet(packet, &cmd_cnt, tx_cmd);
+		update_packet_level_key_disable(vdd, packet, &cmd_cnt, level_key);
+	}
+
 	/* vint */
 	if (!IS_ERR_OR_NULL(vdd->panel_func.samsung_brightness_vint)) {
 		level_key = false;

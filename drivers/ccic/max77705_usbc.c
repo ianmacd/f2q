@@ -3446,8 +3446,10 @@ static int pdic_handle_usb_external_notifier_notification(struct notifier_block 
 	case EXTERNAL_NOTIFY_HOSTBLOCK_EARLY:
 		if (enable)
 			max77705_set_enable_alternate_mode(ALTERNATE_MODE_STOP);
-		if (usbpd_data->dp_is_connect)
+		if (usbpd_data->dp_is_connect) {
 			max77705_dp_detach(usbpd_data);
+			usbpd_data->detach_done_wait = 1;
+		}
 		break;
 	case EXTERNAL_NOTIFY_HOSTBLOCK_POST:
 		if (enable) {

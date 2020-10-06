@@ -372,6 +372,9 @@ struct sec_battery_info {
 	/* keep awake until monitor is done */
 	struct wakeup_source monitor_wake_lock;
 	struct workqueue_struct *monitor_wqueue;
+#if defined(CONFIG_DISABLE_MFC_IC)
+	struct delayed_work mfc_work;
+#endif
 	struct delayed_work monitor_work;
 #ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
 	struct wakeup_source lpm_wake_lock;
@@ -699,6 +702,12 @@ struct sec_battery_info {
 
 	bool boot_complete;
 	int raw_bat_temp;
+
+#if defined(CONFIG_DISABLE_MFC_IC)
+	bool mfc_unknown_swelling;
+	bool mfc_unknown_fullcharged;
+	bool mfc_work_check;
+#endif
 };
 
 /* event check */
@@ -806,5 +815,7 @@ void sec_bat_parse_mode_dt(struct sec_battery_info *battery);
 void sec_bat_parse_mode_dt_work(struct work_struct *work);
 u8 sec_bat_get_wireless20_power_class(struct sec_battery_info *battery);
 void sec_bat_check_battery_health(struct sec_battery_info *battery);
-
+#if defined(CONFIG_DISABLE_MFC_IC)
+void sec_bat_set_mfc_on(struct sec_battery_info *battery, bool always_on);
+#endif
 #endif /* __SEC_BATTERY_H */

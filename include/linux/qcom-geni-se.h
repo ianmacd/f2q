@@ -350,6 +350,7 @@ struct se_geni_rsc {
 
 #define DEFAULT_BUS_WIDTH	(4)
 #define DEFAULT_SE_CLK		(19200000)
+#define BUS_VOTE_NOMINAL	(6000000000)
 
 /* GSI TRE fields */
 /* Packing fields */
