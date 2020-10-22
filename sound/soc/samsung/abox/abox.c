@@ -1380,8 +1380,13 @@ static int abox_component_control_put(struct snd_kcontrol *kcontrol,
 		int val = (int)ucontrol->value.integer.value[i];
 		char *name = kcontrol->id.name;
 
-		if (val < value->control->min || val > value->control->max)
+		if (val < value->control->min || val > value->control->max) {
+			dev_err(dev, "%s: value[%d]=%d, min=%d, max=%d\n",
+					kcontrol->id.name, i, val,
+					value->control->min,
+					value->control->max);
 			return -EINVAL;
+		}
 
 		value->cache[i] = val;
 		dev_dbg(dev, "%s: %s[%d] <= %d", __func__, name, i, val);

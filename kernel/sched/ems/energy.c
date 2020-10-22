@@ -70,7 +70,7 @@ static void ww_init(int sch)
 	while(sch--) {
 		int min_util = INT_MAX, min_cpu = 0;
 
-		for_each_possible_cpu(cpu) {
+		for_each_cpu(cpu, cpu_active_mask) {
 			int cpu_util;
 			if(cpumask_test_cpu(cpu, &ems_ww.mask))
 				continue;
@@ -129,6 +129,9 @@ int find_wide_cpu(struct tp_env *env, int sch)
 
 	cpumask_clear_cpu(best_cpu, &ems_ww.mask);
 	ems_ww.sch--;
+
+	if (!cpumask_test_cpu(best_cpu, cpu_active_mask))
+		best_cpu = -1;
 
 	return best_cpu;
 }

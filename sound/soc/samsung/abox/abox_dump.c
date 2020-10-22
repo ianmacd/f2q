@@ -326,7 +326,7 @@ static int abox_dump_file_open(struct inode *i, struct file *f)
 
 	f->private_data = info;
 	info->file_started = true;
-	info->file_pointer = 0;
+	info->pointer = info->file_pointer = 0;
 	abox_dump_request_dump(info->id);
 
 	return 0;

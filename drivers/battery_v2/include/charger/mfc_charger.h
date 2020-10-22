@@ -1163,5 +1163,8 @@ struct mfc_charger_data {
 	int i2c_error_count;
 	unsigned long gear_start_time;
 	int wpc_en_flag;
+
+	bool req_tx_id;
+	bool is_abnormal_pad;
 };
 #endif /* __WIRELESS_CHARGER_MFC_H */

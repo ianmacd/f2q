@@ -20,6 +20,7 @@
 #include "is-device-sensor.h"
 #include "is-device-sensor-peri.h"
 #include "is-core.h"
+#include "is-time.h"
 
 #include "is-helper-i2c.h"
 
@@ -220,6 +221,7 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 	int i = 0;
 	struct is_actuator *actuator;
 	struct i2c_client *client = NULL;
+	struct is_module_enum *module;
 #ifdef USE_CAMERA_HW_BIG_DATA
 	struct cam_hw_param *hw_param = NULL;
 	struct is_device_sensor *device = NULL;
@@ -230,6 +232,8 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 	do_gettimeofday(&st);
 #endif
 
+	u64 current_time = 0;
+	u32 first_i2c_delay = 0;
 	u32 product_id_list[AK737X_MAX_PRODUCT_LIST] = {0, };
 	u32 product_id_len = 0;
 	u8 product_id = 0;
@@ -250,6 +254,8 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 		goto p_err;
 	}
 
+	module = actuator->sensor_peri->module;
+
 	dev = &client->dev;
 	dnode = dev->of_node;
 
@@ -262,6 +268,20 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 	ret = of_property_read_u32_array(dnode, "vendor_product_id", product_id_list, product_id_len);
 	if (ret)
 		err("vendor_product_id read is fail(%d)", ret);
+
+	current_time = is_get_timestamp_boot();
+
+	if (current_time < module->act_available_time) {
+		first_i2c_delay = (u32)((module->act_available_time - current_time) / 1000L);
+
+		if (first_i2c_delay > 20000) {
+			first_i2c_delay = 20000;
+			info("Check! first_i2c_delay over 20[ms]");
+		}
+
+		usleep_range(first_i2c_delay, first_i2c_delay + 10);
+		info("[%s] need to actuator first_i2c_delay : %d[us]", __func__, first_i2c_delay);
+	}
 
 	I2C_MUTEX_LOCK(actuator->i2c_lock);
 

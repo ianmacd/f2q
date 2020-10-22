@@ -3627,6 +3627,7 @@ static int decon_set_win_config(struct decon_device *decon,
 		num_of_window = decon_get_active_win_count(decon, win_data, &readback_req);
 		if (readback_req) {
 			readback_fence = decon_create_fence(decon, &sync_ofile);
+			win_data->config[decon->dt.wb_win].acq_fence = readback_fence;
 			if (readback_fence < 0)
 				goto err;
 			fd_install(readback_fence, sync_ofile->file);

@@ -27,6 +27,7 @@
 #include <linux/cdev.h>
 #include <linux/debugfs.h>
 #include <linux/timer.h>
+#include <linux/mm.h>
 #include <soc/samsung/exynos-pd.h>
 #include <soc/samsung/exynos-itmon.h>
 #include <linux/soc/samsung/exynos-soc.h>
@@ -34,6 +35,8 @@
 #define SSP_RET_OK		0
 #define SSP_RET_FAIL		-1
 #define SSP_RETRY_MAX_COUNT	1000000
+#define SSP_MAX_USER_CNT	100
+#define SSP_MAX_USER_PATH_LEN	128
 
 /* smc to call ldfw functions */
 #define SMC_CMD_SSP		(0xC2001040)
@@ -47,6 +50,7 @@
 #define SSP_IOCTL_INIT		_IO(SSP_IOCTL_MAGIC, 1)
 #define SSP_IOCTL_EXIT		_IOWR(SSP_IOCTL_MAGIC, 2, uint64_t)
 #define SSP_IOCTL_TEST		_IOWR(SSP_IOCTL_MAGIC, 3, uint64_t)
+#define SSP_IOCTL_DEBUG		_IOWR(SSP_IOCTL_MAGIC, 4, uint64_t)
 
 /* SFR for ssp power control */
 #define PMU_ALIVE_PA_BASE		(0x15860000 + 0x2000)
@@ -66,6 +70,167 @@ struct ssp_device {
 	struct device *dev;
 	struct miscdevice misc_device;
 };
+
+struct ssp_user {
+	char path[SSP_MAX_USER_PATH_LEN];
+	unsigned long init_count;
+	unsigned long init_time;
+	unsigned long exit_count;
+	unsigned long exit_time;
+	unsigned long init_fail_count;
+	unsigned long init_fail_time;
+	unsigned long exit_fail_count;
+	unsigned long exit_fail_time;
+	struct ssp_user *next;
+};
+
+struct ssp_user *head = NULL;
+
+static void exynos_ssp_print_user_list(struct device *dev)
+{
+	struct ssp_user *ptr = head;
+	int i = 0;
+
+	dev_info(dev, "====== Power control status ================="
+		      "=============================================\n");
+	dev_info(dev, "No: %8s:\t%8s\t%8s\t%16s\t%16s\n",
+		      "Caller", "ON", "OFF", "ON-TIME", "OFF-TIME");
+	dev_info(dev, "---------------------------------------------"
+		      "---------------------------------------------\n");
+
+	while (ptr != NULL) {
+		i++;
+
+		dev_info(dev, "%2u:\t%8s: %s\n",
+			i,
+			"Path",
+			ptr->path);
+
+		dev_info(dev, "%2u:\t%8s:\t%8u\t%8u\t%16u\t%16u\n",
+			i,
+			"Success",
+			ptr->init_count,
+			ptr->exit_count,
+			ptr->init_time,
+			ptr->exit_time);
+
+		dev_info(dev, "%2u:\t%8s:\t%8u\t%8u\t%16u\t%16u\n",
+			i,
+			"Fail",
+			ptr->init_fail_count,
+			ptr->exit_fail_count,
+			ptr->init_fail_time,
+			ptr->exit_fail_time);
+
+		ptr = ptr->next;
+	}
+	dev_info(dev, "---------------------------------------------"
+		      "---------------------------------------------\n");
+}
+
+static int exynos_ssp_get_path(struct device *dev, struct task_struct *task, char *task_path)
+{
+	int ret = SSP_RET_OK;
+	char *buf;
+	char *path;
+	struct file *exe_file;
+
+	buf = (char *)__get_free_page(GFP_KERNEL);
+	if (!buf) {
+		dev_err(dev, "%s: fail to __get_free_page.\n", __func__);
+		return -ENOMEM;
+	}
+
+	exe_file = get_task_exe_file(task);
+	if (!exe_file) {
+		ret = -ENOENT;
+		dev_err(dev, "%s: fail to get_task_exe_file.\n", __func__);
+		goto end;
+	}
+
+	path = d_path(&exe_file->f_path, buf, PAGE_SIZE);
+	if (IS_ERR(path)) {
+		ret = PTR_ERR(path);
+		dev_err(dev, "%s: fail to d_path. ret = 0x%x\n", __func__, ret);
+		goto end;
+	}
+
+	memset(task_path, 0, SSP_MAX_USER_PATH_LEN);
+	strncpy(task_path, path, SSP_MAX_USER_PATH_LEN - 1);
+end:
+	free_page((unsigned long)buf);
+
+	return ret;
+}
+
+static struct ssp_user *exynos_ssp_find_user(char *path)
+{
+	struct ssp_user *now = head;
+
+	if (head == NULL)
+		return NULL;
+
+	while (strncmp(now->path, path, SSP_MAX_USER_PATH_LEN)) {
+		if (now->next == NULL)
+			return NULL;
+
+		now = now->next;
+	}
+
+	return now;
+}
+
+static int exynos_ssp_powerctl_update(struct device *dev, bool power_on, bool pass)
+{
+	int ret = SSP_RET_OK;
+	char path[SSP_MAX_USER_PATH_LEN];
+	static int ssp_user_count;
+	struct ssp_user *link = NULL;
+
+	ret = exynos_ssp_get_path(dev, current, path);
+	if (ret) {
+		dev_err(dev, "%s: fail to get path. ret = 0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	link = exynos_ssp_find_user(path);
+
+	if (link == NULL) {
+		if (++ssp_user_count >= SSP_MAX_USER_CNT) {
+			dev_err(dev, "%s: exceed max user count.\n", __func__);
+			return -ENOMEM;
+		}
+
+		link = (struct ssp_user *)kzalloc(sizeof(struct ssp_user), GFP_KERNEL);
+		if (!link) {
+			dev_err(dev, "%s: fail to kzalloc.\n", __func__);
+			return -ENOMEM;
+		}
+
+		memcpy(link->path, path, sizeof(path));
+		link->init_count = 0;
+		link->exit_count = 0;
+
+		link->next = head;
+		head = link;
+	}
+
+	if (power_on == 1 && pass == 1) {
+		link->init_count++;
+		link->init_time = ktime_get_boot_ns() / NSEC_PER_USEC;
+	} else if (power_on == 1 && pass == 0) {
+		link->init_fail_count++;
+		link->init_fail_time = ktime_get_boot_ns() / NSEC_PER_USEC;
+	} else if (power_on == 0 && pass == 1) {
+		link->exit_count++;
+		link->exit_time = ktime_get_boot_ns() / NSEC_PER_USEC;
+	} else if (power_on == 0 && pass == 0) {
+		link->exit_fail_count++;
+		link->exit_fail_time = ktime_get_boot_ns() / NSEC_PER_USEC;
+	}
+
+	return ret;
+}
 
 static int exynos_cm_smc(uint64_t *arg0, uint64_t *arg1,
 			 uint64_t *arg2, uint64_t *arg3)
@@ -345,7 +510,7 @@ static int exynos_ssp_enable(struct ssp_device *sspdev)
 				goto ERR_OUT2;
 		}
 	}
-
+	exynos_ssp_powerctl_update(sspdev->dev, 1, 1);
 	dev_info(sspdev->dev, "ssp enable: count: %d\n", ssp_power_count);
 
 	return ret;
@@ -354,6 +519,7 @@ ERR_OUT2:
 	exynos_ssp_power_off(sspdev);
 
 ERR_OUT1:
+	exynos_ssp_powerctl_update(sspdev->dev, 1, 0);
 	pm_qos_update_request(&ssp_pm_int_request, 0);
 	pm_relax(sspdev->dev);
 	--ssp_power_count;
@@ -388,6 +554,7 @@ static int exynos_ssp_disable(struct ssp_device *sspdev)
 		pm_relax(sspdev->dev);
 	}
 
+	exynos_ssp_powerctl_update(sspdev->dev, 0, 1);
 	dev_info(sspdev->dev, "ssp disable: count: %d\n", ssp_power_count);
 
 	return ret;
@@ -396,6 +563,7 @@ ERR_OUT1:
 	exynos_ssp_power_off(sspdev);
 
 ERR_OUT2:
+	exynos_ssp_powerctl_update(sspdev->dev, 0, 0);
 	pm_qos_update_request(&ssp_pm_int_request, 0);
 	pm_relax(sspdev->dev);
 
@@ -406,18 +574,31 @@ static long ssp_ioctl(struct file *filp, unsigned int cmd, unsigned long __arg)
 {
 	int ret = SSP_RET_OK;
 	uint64_t test_mode;
+	char path[SSP_MAX_USER_PATH_LEN];
 
 	struct ssp_device *sspdev = filp->private_data;
 	void __user *arg = (void __user *)__arg;
+
+	ret = exynos_ssp_get_path(sspdev->dev, current, path);
+	if (ret) {
+		dev_err(sspdev->dev, "%s: fail to get user path. ret = 0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	dev_info(sspdev->dev, "requested by %s\n", path);
 
 	mutex_lock(&ssp_ioctl_lock);
 
 	switch (cmd) {
 	case SSP_IOCTL_INIT:
 		ret = exynos_ssp_enable(sspdev);
+		if (ret != SSP_RET_OK)
+			exynos_ssp_print_user_list(sspdev->dev);
 		break;
 	case SSP_IOCTL_EXIT:
 		ret = exynos_ssp_disable(sspdev);
+		if (ret != SSP_RET_OK)
+			exynos_ssp_print_user_list(sspdev->dev);
 		break;
 	case SSP_IOCTL_TEST:
 		ret = get_user(test_mode, (uint64_t __user *)arg);
@@ -426,6 +607,10 @@ static long ssp_ioctl(struct file *filp, unsigned int cmd, unsigned long __arg)
 			break;
 		}
 		ret = exynos_ssp_self_test(sspdev->dev, test_mode);
+		break;
+	case SSP_IOCTL_DEBUG:
+		dev_info(sspdev->dev, "power-on count: %d\n", ssp_power_count);
+		exynos_ssp_print_user_list(sspdev->dev);
 		break;
 	default:
 		dev_err(sspdev->dev, "%s: invalid ioctl cmd: 0x%x\n", __func__, cmd);

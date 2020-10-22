@@ -405,10 +405,16 @@ static int max77705_get_charging_health(struct max77705_charger_data *charger)
 			charger->misalign_cnt = 0;
 
 		if (charger->misalign_cnt >= 3) {
-			pr_info("%s: invalid WCIN, Misalign occurs!\n", __func__);
-			value.intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
-			psy_do_property(charger->pdata->wireless_charger_name,
-				set, POWER_SUPPLY_PROP_STATUS, value);
+			psy_do_property("battery",
+				get, POWER_SUPPLY_PROP_STATUS, value);
+			if (value.intval != POWER_SUPPLY_STATUS_FULL) {
+				pr_info("%s: invalid WCIN, Misalign occurs!\n", __func__);
+				value.intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+				psy_do_property(charger->pdata->wireless_charger_name,
+					set, POWER_SUPPLY_PROP_STATUS, value);
+			} else {
+				charger->misalign_cnt = 0;
+			}
 		}
 	}
 

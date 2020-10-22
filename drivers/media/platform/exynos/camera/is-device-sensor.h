@@ -274,6 +274,7 @@ struct is_module_enum {
 	u32						position;
 	u32						bitwidth;
 	u32						cfgs;
+	u64						act_available_time;
 	struct is_sensor_cfg			*cfg;
 	struct is_sensor_vc_extra_info		vc_extra_info[VC_BUF_DATA_TYPE_MAX];
 	struct i2c_client				*client;

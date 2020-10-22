@@ -424,6 +424,7 @@ enum capture_state {
 	CAPTURE_STATE_ZSL_LIKE = 20,
 	CAPTURE_STATE_STREAM_ON_CAPTURE = 30,
 	CAPTURE_STATE_RAW_CAPTURE = 100,
+	CAPTURE_STATE_VIDEO_RECORD_CHANGE_FPS = 200,
 };
 
 enum flash_info_available {
@@ -861,6 +862,8 @@ enum aa_capture_intent {
     AA_CAPTURE_INTENT_STILL_CAPTURE_PROCESSED_REMOSAIC_SINGLE_FLASH         = 130,
     AA_CAPTURE_INTENT_STILL_CAPTURE_AIF_DYNAMIC_SHOT                        = 131,
 
+    AA_CAPTURE_INTENT_VIDEO_RECORD_CHANGE_FPS          = 500,
+
     AA_CAPTURE_INTENT_STILL_CAPTURE_SPORT_MOTIONLEVEL0 = 90000,
     AA_CAPTURE_INTENT_STILL_CAPTURE_SPORT_MOTIONLEVEL1 = 90001,
     AA_CAPTURE_INTENT_STILL_CAPTURE_SPORT_MOTIONLEVEL2 = 90002,
@@ -1234,6 +1237,23 @@ enum aa_control_ssrm_hint {
 	AA_SSRM_HINT_LOW_POWER_MODE_L3 = 1 << 2,
 };
 
+enum aa_ae_extra_mode {
+	AA_AE_EXTRA_MODE_AUTO             = 0,
+	AA_AE_EXTRA_MODE_SHUTTER_PRIORITY = 1,
+	AA_AE_EXTRA_MODE_ISO_PRIORITY     = 2,
+};
+
+enum aa_dynamic_bds_mode {
+	AA_DYNAMIC_BDS_MODE_OFF = 0,
+	AA_DYNAMIC_BDS_MODE_LOW_LIGHT_ON = 1,   /* IQ controlled */
+	AA_DYNAMIC_BDS_MODE_SYSTEM_ON  = 2,     /* HAL controlled */
+};
+
+enum aa_transient_capture_action {
+	AA_TRANSIENT_CAPTURE_ACTION_OFF = 0,
+	AA_TRANSIENT_CAPTURE_ACTION_FAST_CAPTURE = 1,
+};
+
 struct camera2_video_output_size {
 	uint16_t			width;
 	uint16_t			height;
@@ -1303,7 +1323,10 @@ struct camera2_aa_ctl {
 	enum aa_short_ref_hdr_mode	vendor_shortRefHdrEnable;
 	int32_t				vendor_memTotal;
 	struct depth_info		vendor_depthInfo;
-	uint32_t			vendor_reserved[31];
+	enum aa_ae_extra_mode		vendor_aeExtraMode;
+	enum aa_dynamic_bds_mode		vendor_enableDynamicBds;
+	enum aa_transient_capture_action	vendor_transientCaptureAction;
+	uint32_t			vendor_reserved[28];
 };
 
 struct aa_apexInfo {
@@ -1409,7 +1432,9 @@ struct camera2_aa_dm {
 	int32_t				vendor_dynamicShotCaptureDuration;
 	int32_t				vendor_aeBracketingFpsHint;
 	struct oisHallInfo		vendor_oisHallData;
-	uint32_t			vendor_reserved[39];
+	int32_t				vendor_fpsHint;
+	enum aa_dynamic_bds_mode		vendor_dynamicBdsInfo;
+	uint32_t			vendor_reserved[37];
 
 	// For dual
 	uint32_t			vendor_wideTeleConvEv;

@@ -87,7 +87,7 @@ struct abox_dbg_dump {
 	unsigned int gpr[SZ_128];
 	long long time;
 	char reason[SZ_32];
-	bool previous;
+	unsigned int previous;
 } __packed;
 
 struct abox_dbg_dump_min {
@@ -98,7 +98,7 @@ struct abox_dbg_dump_min {
 	unsigned int gpr[SZ_128];
 	long long time;
 	char reason[SZ_32];
-	bool previous;
+	unsigned int previous;
 } __packed;
 
 struct abox_dbg_dump_info {
@@ -151,6 +151,92 @@ static int __init abox_dbg_rmem_setup(struct reserved_mem *rmem)
 
 RESERVEDMEM_OF_DECLARE(abox_dbg_rmem, "exynos,abox_dbg", abox_dbg_rmem_setup);
 
+static bool abox_dbg_dump_valid(int idx)
+{
+	bool ret = false;
+
+	if (idx >= ABOX_DBG_DUMP_COUNT)
+		return false;
+
+	if (p_abox_dbg_dump) {
+		struct abox_dbg_dump *p_dump = &(*p_abox_dbg_dump)[idx];
+
+		ret = (p_dump->sfr.magic == ABOX_DBG_DUMP_MAGIC_SFR);
+	} else if (p_abox_dbg_dump_min) {
+		struct abox_dbg_dump_min *p_dump = &(*p_abox_dbg_dump_min)[idx];
+
+		ret = (p_dump->sfr.magic == ABOX_DBG_DUMP_MAGIC_SFR);
+	}
+
+	return ret;
+}
+
+static void abox_dbg_clear_valid(int idx)
+{
+	if (idx >= ABOX_DBG_DUMP_COUNT)
+		return;
+
+	if (p_abox_dbg_dump) {
+		struct abox_dbg_dump *p_dump = &(*p_abox_dbg_dump)[idx];
+
+		p_dump->sfr.magic = 0;
+	} else if (p_abox_dbg_dump_min) {
+		struct abox_dbg_dump_min *p_dump = &(*p_abox_dbg_dump_min)[idx];
+
+		p_dump->sfr.magic = 0;
+	}
+}
+
+static ssize_t abox_dbg_read_valid(struct file *file, char __user *user_buf,
+				    size_t count, loff_t *ppos)
+{
+	int idx = (int)file->private_data;
+	bool valid = abox_dbg_dump_valid(idx);
+	char buf_val[4] = {0, }; /* enough to store a bool and "\n\0" */
+
+	if (valid)
+		buf_val[0] = 'Y';
+	else
+		buf_val[0] = 'N';
+	buf_val[1] = '\n';
+	buf_val[2] = 0x00;
+	return simple_read_from_buffer(user_buf, count, ppos, buf_val, 2);
+}
+
+static const struct file_operations abox_dbg_fops_valid = {
+	.open = simple_open,
+	.read = abox_dbg_read_valid,
+	.llseek = default_llseek,
+};
+
+static ssize_t abox_dbg_read_clear(struct file *file, char __user *user_buf,
+				   size_t count, loff_t *ppos)
+{
+	int idx = (int)file->private_data;
+
+	abox_dbg_clear_valid(idx);
+
+	return 0;
+}
+
+static ssize_t abox_dbg_write_clear(struct file *file,
+				    const char __user *user_buf,
+				    size_t count, loff_t *ppos)
+{
+	int idx = (int)file->private_data;
+
+	abox_dbg_clear_valid(idx);
+
+	return 0;
+}
+
+static const struct file_operations abox_dbg_fops_clear = {
+	.open = simple_open,
+	.read = abox_dbg_read_clear,
+	.write = abox_dbg_write_clear,
+	.llseek = no_llseek,
+};
+
 static int abox_dbg_dump_create_file(struct abox_data *data)
 {
 	const char *dir_fmt = "snapshot_%d";
@@ -201,8 +287,16 @@ static int abox_dbg_dump_create_file(struct abox_data *data)
 			info->reason.size = sizeof(p_dump->reason);
 			debugfs_create_blob("reason", 0440, dir, &info->reason);
 
-			debugfs_create_bool("previous", 0440, dir,
+			debugfs_create_u32("previous", 0440, dir,
 					&p_dump->previous);
+
+			debugfs_create_file("valid", 0440, dir,
+					(void *)(long)i,
+					&abox_dbg_fops_valid);
+
+			debugfs_create_file("clear", 0440, dir,
+					(void *)(long)i,
+					&abox_dbg_fops_clear);
 
 			kfree(dir_name);
 		}
@@ -237,8 +331,16 @@ static int abox_dbg_dump_create_file(struct abox_data *data)
 			info->reason.size = sizeof(p_dump->reason);
 			debugfs_create_blob("reason", 0440, dir, &info->reason);
 
-			debugfs_create_bool("previous", 0440, dir,
+			debugfs_create_u32("previous", 0440, dir,
 					&p_dump->previous);
+
+			debugfs_create_file("valid", 0440, dir,
+					(void *)(long)i,
+					&abox_dbg_fops_valid);
+
+			debugfs_create_file("clear", 0440, dir,
+					(void *)(long)i,
+					&abox_dbg_fops_clear);
 
 			kfree(dir_name);
 		}
@@ -264,8 +366,10 @@ static void abox_dbg_rmem_init(struct abox_data *data)
 		data->dump_base = p_abox_dbg_dump;
 		for (i = 0; i < ABOX_DBG_DUMP_COUNT; i++) {
 			p_dump = &(*p_abox_dbg_dump)[i];
-			if (p_dump->sram.magic == ABOX_DBG_DUMP_MAGIC_SRAM)
-				p_dump->previous = true;
+			if (p_dump->sfr.magic == ABOX_DBG_DUMP_MAGIC_SFR)
+				p_dump->previous++;
+			else
+				p_dump->previous = 0;
 		}
 	} else if (sizeof(*p_abox_dbg_dump_min) <= abox_dbg_rmem->size) {
 		struct abox_dbg_dump_min *p_dump;
@@ -274,8 +378,10 @@ static void abox_dbg_rmem_init(struct abox_data *data)
 		data->dump_base = p_abox_dbg_dump_min;
 		for (i = 0; i < ABOX_DBG_DUMP_COUNT; i++) {
 			p_dump = &(*p_abox_dbg_dump_min)[i];
-			if (p_dump->sram.magic == ABOX_DBG_DUMP_MAGIC_SRAM)
-				p_dump->previous = true;
+			if (p_dump->sfr.magic == ABOX_DBG_DUMP_MAGIC_SFR)
+				p_dump->previous++;
+			else
+				p_dump->previous = 0;
 		}
 	}
 
@@ -310,14 +416,14 @@ void abox_dbg_dump_gpr_from_addr(struct device *dev, unsigned int *addr,
 		struct abox_dbg_dump *p_dump = &(*p_abox_dbg_dump)[src];
 
 		p_dump->time = time;
-		p_dump->previous = false;
+		p_dump->previous = 0;
 		strncpy(p_dump->reason, reason, sizeof(p_dump->reason) - 1);
 		abox_core_dump_gpr_dump(p_dump->gpr, addr);
 	} else if (p_abox_dbg_dump_min) {
 		struct abox_dbg_dump_min *p_dump = &(*p_abox_dbg_dump_min)[src];
 
 		p_dump->time = time;
-		p_dump->previous = false;
+		p_dump->previous = 0;
 		strncpy(p_dump->reason, reason, sizeof(p_dump->reason) - 1);
 		abox_core_dump_gpr_dump(p_dump->gpr, addr);
 	}
@@ -347,14 +453,14 @@ void abox_dbg_dump_gpr(struct device *dev, struct abox_data *data,
 		struct abox_dbg_dump *p_dump = &(*p_abox_dbg_dump)[src];
 
 		p_dump->time = time;
-		p_dump->previous = false;
+		p_dump->previous = 0;
 		strncpy(p_dump->reason, reason, sizeof(p_dump->reason) - 1);
 		abox_core_dump_gpr(p_dump->gpr);
 	} else if (p_abox_dbg_dump_min) {
 		struct abox_dbg_dump_min *p_dump = &(*p_abox_dbg_dump_min)[src];
 
 		p_dump->time = time;
-		p_dump->previous = false;
+		p_dump->previous = 0;
 		strncpy(p_dump->reason, reason, sizeof(p_dump->reason) - 1);
 		abox_core_dump_gpr(p_dump->gpr);
 	}
@@ -384,7 +490,7 @@ void abox_dbg_dump_mem(struct device *dev, struct abox_data *data,
 		struct abox_dbg_dump *p_dump = &(*p_abox_dbg_dump)[src];
 
 		p_dump->time = time;
-		p_dump->previous = false;
+		p_dump->previous = 0;
 		strncpy(p_dump->reason, reason, sizeof(p_dump->reason) - 1);
 		memcpy_fromio(p_dump->sram.dump, data->sram_base,
 				data->sram_size);
@@ -400,7 +506,7 @@ void abox_dbg_dump_mem(struct device *dev, struct abox_data *data,
 		struct abox_dbg_dump_min *p_dump = &(*p_abox_dbg_dump_min)[src];
 
 		p_dump->time = time;
-		p_dump->previous = false;
+		p_dump->previous = 0;
 		strncpy(p_dump->reason, reason, sizeof(p_dump->reason) - 1);
 		memcpy_fromio(p_dump->sram.dump, data->sram_base,
 				data->sram_size);

@@ -27,6 +27,7 @@
 #include <exynos-is-module.h>
 #include "is-i2c-config.h"
 #include "is-vender.h"
+#include "is-time.h"
 
 static int acquire_shared_rsc(struct exynos_sensor_pin *pin_ctrls)
 {
@@ -154,6 +155,11 @@ static int exynos_is_module_pin_control(struct is_module_enum *module,
 						module, module->sensor_id, name);
 
 				ret = regulator_enable(regulator);
+
+				if (pin_ctrls->actuator_i2c_delay > 0) {
+					module->act_available_time = is_get_timestamp_boot() + (pin_ctrls->actuator_i2c_delay * 1000);
+				}
+
 				if (ret) {
 					merr("[M%d] regulator_enable(%s) fail\n",
 						module, module->sensor_id, name);

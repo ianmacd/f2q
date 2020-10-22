@@ -129,7 +129,7 @@ void abox_core_enable(int enable)
 
 void abox_core_standby(void)
 {
-	static const u64 timeout = NSEC_PER_MSEC * 100;
+	static const u64 timeout = NSEC_PER_MSEC * 1000;
 	struct abox_data *data = get_abox_data();
 	struct device *dev = data->dev;
 	struct abox_core *core;

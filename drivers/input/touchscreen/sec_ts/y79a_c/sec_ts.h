@@ -860,10 +860,14 @@ struct sec_ts_data {
 	u8 grip_edgehandler_direction;
 	int grip_edgehandler_start_y;
 	int grip_edgehandler_end_y;
-	u16 grip_edge_range;
-	u8 grip_deadzone_up_x;
-	u8 grip_deadzone_dn_x;
-	int grip_deadzone_y;
+	u16 grip_edge_range;//grip X1
+	u8 grip_deadzone_up_x;//reject X1
+	u8 grip_deadzone_dn_x;//reject X2
+	int grip_deadzone_y;//reject Y1
+	/* add 3state reject zone */
+	u8 grip_deadzone_dn2_x;//reject X3
+	int grip_deadzone_dn_y;//reject Y2
+	/* add 3state reject zone */
 	u8 grip_landscape_mode;
 	int grip_landscape_edge;
 	u16 grip_landscape_deadzone;

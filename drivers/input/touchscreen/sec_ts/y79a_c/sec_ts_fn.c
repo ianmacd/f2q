@@ -6629,9 +6629,12 @@ void set_grip_data_to_ic(struct sec_ts_data *ts, u8 flag)
 		data[1] = ts->grip_deadzone_dn_x & 0xFF;
 		data[2] = (ts->grip_deadzone_y >> 8) & 0xFF;
 		data[3] = ts->grip_deadzone_y & 0xFF;
-		ts->sec_ts_i2c_write(ts, SEC_TS_CMD_DEAD_ZONE, data, 4);
-		input_info(true, &ts->client->dev, "%s: 0x%02X %02X,%02X,%02X,%02X\n",
-				__func__, SEC_TS_CMD_DEAD_ZONE, data[0], data[1], data[2], data[3]);
+		data[4] = ts->grip_deadzone_dn2_x & 0xFF;
+		data[5] = (ts->grip_deadzone_dn_y >> 8) & 0xFF;
+		data[6] = ts->grip_deadzone_dn_y & 0xFF;
+		ts->sec_ts_i2c_write(ts, SEC_TS_CMD_DEAD_ZONE, data, 7);
+		input_info(true, &ts->client->dev, "%s: 0x%02X %02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+				__func__, SEC_TS_CMD_DEAD_ZONE, data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
 	}
 
 	if (flag & G_SET_LANDSCAPE_MODE) {
@@ -6713,6 +6716,9 @@ static void set_grip_data(void *device_data)
 		ts->grip_deadzone_up_x = sec->cmd_param[2];
 		ts->grip_deadzone_dn_x = sec->cmd_param[3];
 		ts->grip_deadzone_y = sec->cmd_param[4];
+		/* add 3state reject zone */
+		ts->grip_deadzone_dn2_x = sec->cmd_param[5];
+		ts->grip_deadzone_dn_y = sec->cmd_param[6];
 		mode = mode | G_SET_NORMAL_MODE;
 
 		if (ts->grip_landscape_mode == 1) {

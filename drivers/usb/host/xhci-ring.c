@@ -1398,7 +1398,7 @@ void xhci_handle_command_timeout(struct work_struct *work)
 
 #ifdef CONFIG_USB_DWC3_EXYNOS
 	timeout_cnt++;
-	if (timeout_cnt >= 5) {
+	if (timeout_cnt >= 3) {
 		xhci_err(xhci, "Command timeout count is expired.");
 		xhci_halt(xhci);
 		xhci_hc_died(xhci);

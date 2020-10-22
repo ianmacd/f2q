@@ -30,6 +30,8 @@ struct exynos_sensor_pin {
 	spinlock_t *shared_rsc_slock;
 	atomic_t *shared_rsc_count;
 	int shared_rsc_active;
+
+	u32 actuator_i2c_delay;
 };
 
 struct exynos_sensor_module_match {

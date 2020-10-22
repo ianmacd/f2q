@@ -928,5 +928,8 @@ struct mfc_charger_data {
 	int input_current;
 	int duty_min;
 	int wpc_en_flag;
+
+	bool req_tx_id;
+	bool is_abnormal_pad;
 };
 #endif /* __WIRELESS_CHARGER_MFC_S2MIW04_H */

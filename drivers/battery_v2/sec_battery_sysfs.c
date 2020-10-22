@@ -1952,7 +1952,7 @@ ssize_t sec_bat_store_attrs(
 				if (battery->pdata->wpc_en)
 					gpio_direction_output(battery->pdata->wpc_en, 1);
 #endif
-				pr_info("%s: WC CONTROL: Disable", __func__);
+				pr_info("%s: WC CONTROL: Disable\n", __func__);
 				mutex_unlock(&battery->wclock);
 			} else if (x == 1) {
 				mutex_lock(&battery->wclock);
@@ -1970,7 +1970,7 @@ ssize_t sec_bat_store_attrs(
 				if (battery->pdata->wpc_en)
 					gpio_direction_output(battery->pdata->wpc_en, 0);
 #endif
-				pr_info("%s: WC CONTROL: Enable", __func__);
+				pr_info("%s: WC CONTROL: Enable\n", __func__);
 				mutex_unlock(&battery->wclock);
 			} else {
 				dev_info(battery->dev,
@@ -2142,6 +2142,19 @@ ssize_t sec_bat_store_attrs(
 				queue_delayed_work(battery->monitor_wqueue,
 					&battery->monitor_work, 0);
 			}
+#if defined(CONFIG_DISABLE_MFC_IC)
+			if (lpcharge) {
+				if (battery->lcd_status &&
+					(battery->mfc_unknown_swelling || battery->mfc_unknown_fullcharged)) {
+					sec_bat_set_mfc_on(battery, true);
+					battery->mfc_work_check = false;
+					queue_delayed_work(battery->monitor_wqueue,
+						&battery->mfc_work, msecs_to_jiffies(2000));
+				} else {
+					cancel_delayed_work(&battery->mfc_work);
+				}
+			}
+#endif
 #endif
 			ret = count;
 		}
@@ -2664,7 +2677,7 @@ ssize_t sec_bat_store_attrs(
 	case BATT_TUNE_WIRELESS_VOUT_CURRENT:
 		{
 			int vout, input_current, offset;
-	
+
 			sscanf(buf, "%10d %10d\n", &offset, &input_current);			
 			switch(offset) {
 			case 5500:
@@ -2690,7 +2703,7 @@ ssize_t sec_bat_store_attrs(
 				vout = 0;
 				break;
 			}
-	
+
 			if(input_current >= 100 && input_current <= 4000 && vout > 0) {
 				for(i=0; i < SEC_WIRELESS_RX_POWER_MAX; i++) {
 					if(battery->pdata->wireless_power_info[i].vout != 0) {
@@ -2811,7 +2824,7 @@ ssize_t sec_bat_store_attrs(
 		sscanf(buf, "%10d\n", &x);
 		pr_info("%s dchg_high_batt_temp_recovery = %d ",__func__, x);
 		battery->pdata->dchg_high_batt_temp_recovery = x;
-		break;		
+		break;
 #if defined(CONFIG_DIRECT_CHARGING)
 	case BATT_TUNE_DCHG_LIMMIT_INPUT_CUR:
 		sscanf(buf, "%10d\n", &x);

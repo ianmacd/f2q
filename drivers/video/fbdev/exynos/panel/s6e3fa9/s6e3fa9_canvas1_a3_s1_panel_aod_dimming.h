@@ -22,7 +22,7 @@
  * PANEL : CANVAS1_A3_S1
  */
 static unsigned int canvas1_a3_s1_aod_brt_tbl[S6E3FA9_CANVAS1_AOD_NR_LUMINANCE] = {
-	BRT_LT(40), BRT_LT(71), BRT_LT(94), BRT(255),
+	BRT_LT(13), BRT_LT(32), BRT_LT(55), BRT(255),
 };
 
 static unsigned int canvas1_a3_s1_aod_lum_tbl[S6E3FA9_CANVAS1_AOD_NR_LUMINANCE] = {

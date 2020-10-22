@@ -986,6 +986,10 @@ static int parse_power_seq_data(struct exynos_platform_is_module *pdata, struct 
 				pin->shared_rsc_active = 0;
 			}
 
+			if (of_find_property(node_table[i], "actuator_i2c_delay", NULL)) {
+				of_property_read_u32(node_table[i], "actuator_i2c_delay", &pin->actuator_i2c_delay);
+			}
+
 			dbg("%s: gpio=%d, name=%s, act=%d, val=%d, delay=%d, volt=%d, share=<%d %d %d>\n",
 				node_table[i]->name,
 				pin->pin,

@@ -231,6 +231,9 @@ static bool can_migrate(struct task_struct *p, struct ontime_env *env)
 	struct rq *src_rq = env->src_rq;
 	int src_cpu = env->src_cpu;
 
+	if (!cpumask_test_cpu(env->dst_cpu, cpu_active_mask))
+		return false;
+
 	if (ontime_of(p)->migrating == 0)
 		return false;
 

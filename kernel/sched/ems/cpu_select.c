@@ -267,5 +267,8 @@ int find_best_cpu(struct tp_env *env)
 		break;
 	}
 
+	if (!cpumask_test_cpu(best_cpu, cpu_active_mask))
+		best_cpu = INVALID_CPU;
+
 	return best_cpu;
 }
