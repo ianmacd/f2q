@@ -229,7 +229,7 @@ int auto_sleep_thread_start(struct auto_sleep_thread *thrctx, struct auto_sleep_
  */
 int auto_sleep_thread_terminate(struct auto_sleep_thread *thrctx)
 {
-	int ret;
+	int ret = 0;
 
 	BUG_ON(!thrctx);
 	BUG_ON(!thrctx->thread_ref);

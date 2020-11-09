@@ -174,6 +174,7 @@ static int npu_vertex_open(struct file *file)
 	}
 	if (ret) {
 		npu_err("fail(%d) in vref_get", ret);
+		__vref_put(&vertex->open_cnt);
 		goto ErrorExit;
 	}
 
@@ -703,6 +704,10 @@ static int npu_vertex_streamon(struct file *file)
 	}
 
 	ret = npu_session_NW_CMD_STREAMON(session);
+	if (ret) {
+		npu_ierr("fail(%d) in npu_session_NW_CMD_STREAMON\n", vctx, ret);
+		goto p_err;
+	}
 	ret = chk_nw_result_no_error(session);
 	if (ret == NPU_ERR_NO_ERROR) {
 		vctx->state |= BIT(NPU_VERTEX_STREAMON);
@@ -749,6 +754,10 @@ static int npu_vertex_streamoff(struct file *file)
 	}
 
 	ret = npu_session_NW_CMD_STREAMOFF(session);
+	if (ret) {
+		npu_ierr("fail(%d) in npu_session_NW_CMD_STREAMOFF\n", vctx, ret);
+		goto p_err;
+	}
 	ret = chk_nw_result_no_error(session);
 	if (ret == NPU_ERR_NO_ERROR) {
 		vctx->state |= BIT(NPU_VERTEX_STREAMOFF);
@@ -795,6 +804,10 @@ static int __force_streamoff(struct file *file)
 	}
 
 	ret = npu_session_NW_CMD_STREAMOFF(session);
+	if (ret) {
+		npu_ierr("fail(%d) in npu_session_NW_CMD_STREAMOFF\n", vctx, ret);
+		goto p_err;
+	}
 
 	if (!npu_device_is_emergency_err(device)) {
 		ret = chk_nw_result_no_error(session);

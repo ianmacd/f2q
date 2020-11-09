@@ -237,19 +237,23 @@ static DEVICE_ATTR_RW(stm_guarantee);
 /* Register SYSFS entry and initialize MCT clock rate */
 static int register_stm_ts_sysfs(struct npu_system *system)
 {
-	int ret;
+	int ret = 0;
 	struct clk *mct_clk;
 	struct npu_device *device = container_of(system, struct npu_device, system);
 
 	/* Create SYSFS entry for Guaranteed STM setting */
 	ret = sysfs_create_file(&device->dev->kobj, &dev_attr_stm_guarantee.attr);
-	if (ret)
+	if (ret) {
 		probe_err("sysfs_create_file error : ret = %d\n", ret);
+		goto err_exit;
+	}
 
 	/* Create SYSFS entry for STM Timestamp check */
 	ret = sysfs_create_file(&device->dev->kobj, &dev_attr_stm_ts.attr);
-	if (ret)
+	if (ret) {
 		probe_err("sysfs_create_file error : ret = %d\n", ret);
+		goto err_exit;
+	}
 
 	mct_clk = clk_get(NULL, "fin_pll");
 	if (IS_ERR(mct_clk))
@@ -258,8 +262,8 @@ static int register_stm_ts_sysfs(struct npu_system *system)
 		npu_stm_ts_stat.stm_rate = clk_get_rate(mct_clk) / 1000000;
 
 	npu_stm_ts_stat.sfr_mct_g = &system->sfr_mct_g;
-
-	return 0;
+err_exit:
+	return ret;
 }
 
 /* Make sync point of MCT and kernel clock */
@@ -382,7 +386,7 @@ err_exit:
  */
 static int npu_stm_allow_64_trace(struct npu_system *system)
 {
-	int	ret;
+	int	ret = 0;
 	u32	old_hemcr;	/* Backup of current STMHEMCR value */
 	struct reg_set_map_2 allow64_npu_stm_regs[] = {
 		/* Addr			Offset	Val		Mask */
@@ -529,7 +533,7 @@ err_exit:
 
 static void npu_stm_unlink(struct stm_source_data *data)
 {
-	int ret;
+	int ret = 0;
 
 	struct npu_stm_data *npu_stm
 		= container_of(data, struct npu_stm_data, stm_source_data);
@@ -559,8 +563,7 @@ int npu_stm_enable(struct npu_system *system)
 
 	if (atomic_read(&npu_stm_data.enabled) != NPU_STM_ENABLED) {
 		/* No need to be enabled */
-		ret = 0;
-		goto err_exit;
+		return ret;
 	}
 
 	/* Adjust BUSP divider if guaranteed STM is activated */
@@ -704,7 +707,7 @@ int npu_stm_probe(struct npu_system *system)
 
 	atomic_set(&npu_stm_data.probed, 1);
 
-	return 0;
+	return ret;
 
 err_exit_stm_register:
 	stm_source_unregister_device(&npu_stm_data.stm_source_data);
@@ -715,18 +718,22 @@ err_exit:
 
 int npu_stm_release(struct npu_system *system)
 {
-	int			ret;
+	int			ret = 0;
 
 	/* Check whether the initialization is completed */
 	if (!atomic_read(&npu_stm_data.probed))
-		return 0;
+		return ret;
 
 	stm_source_unregister_device(&npu_stm_data.stm_source_data);
 
 	ret = disable_mct_fw_access(system);
-	if (ret)
+	if (ret) {
 		probe_err("fail(%d) in disable_mct_fw_access()\n", ret);
+		goto err_exit;
+	}
 
 	atomic_set(&npu_stm_data.probed, 0);
-	return 0;
+	return ret;
+err_exit:
+	return ret;
 }

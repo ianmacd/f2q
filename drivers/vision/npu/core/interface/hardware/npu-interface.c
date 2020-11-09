@@ -134,7 +134,6 @@ void dbg_print_error(void)
 		buf[0] = '\0';
 	}
 	mutex_unlock(&interface.lock);
-
 }
 
 void dbg_print_ncp_header(struct ncp_header *nhdr)
@@ -153,7 +152,6 @@ void dbg_print_ncp_header(struct ncp_header *nhdr)
 	npu_info("addr_vector_offset \t: 0X%X\n", nhdr->address_vector_offset);
 	npu_info("addr_vector_cnt \t: 0X%X\n", nhdr->address_vector_cnt);
 	npu_info("magic_number2 \t: 0X%X\n", nhdr->magic_number2);
-
 }
 
 void dbg_print_interface(void)
@@ -269,6 +267,11 @@ int npu_interface_probe(struct device *dev, void *regs)
 	int ret = 0;
 
 	BUG_ON(!dev);
+	if (!regs) {
+		probe_err("fail in %s\n", __func__);
+		ret = -EINVAL;
+		return ret;
+	}
 
 	interface.sfr = (volatile struct mailbox_sfr *)regs;
 	mutex_init(&interface.lock);
@@ -330,10 +333,16 @@ err_exit:
 	npu_err("EMERGENCY_RECOVERY is triggered.\n");
 	return ret;
 }
+
 int npu_interface_close(struct npu_system *system)
 {
 	int wptr, rptr;
 	struct device *dev = &system->pdev->dev;
+
+	if (!system) {
+		npu_err("fail in %s\n", __func__);
+		return -EINVAL;
+	}
 
 	queue_work(wq, &work_report);
 	if ((wq) && (interface.mbox_hdr)) {
@@ -506,7 +515,7 @@ void makeStructToString(struct cmd_done *done)
 	fwProfile.info_cnt = sizeof(struct cmd_done) / sizeof(u32);
 	for (i = 0; i < (int)fwProfile.info_cnt; i++) {
 		memset(tempbuf, 0, sizeof(tempbuf));
-		val = *(((u32 *)done + (i * sizeof(u32 *))));
+		val = ((u32*)done)[i];
 		sprintf(tempbuf, "%d", val);
 
 		memcpy(fwProfile.data + fwProfile.buf_size, strArr[i], strlen(strArr[i]));
@@ -610,7 +619,8 @@ int fr_rslt_manager(int *ret_msgid, struct npu_frame *frame)
 //Print log which was written with last 128 byte.
 int npu_check_unposted_mbox(int nCtrl)
 {
-	int pos, ret;
+	int pos;
+	int ret = TRUE;
 	char *base;
 	u32 nSize, wptr, rptr, sgmt_len;
 	u32 *buf, *strOut;
@@ -626,7 +636,8 @@ int npu_check_unposted_mbox(int nCtrl)
 	}
 	buf = kzalloc(LENGTHOFEVIDENCE, GFP_ATOMIC);
 	if (!buf) {
-		kfree(strOut);
+		if (strOut)
+			kfree(strOut);
 		ret = -ENOMEM;
 		goto err_exit;
 	}
@@ -677,9 +688,10 @@ int npu_check_unposted_mbox(int nCtrl)
 	if (!in_interrupt())
 		mutex_unlock(&interface.lock);
 
-	ret = TRUE;
-	kfree(buf);
-	kfree(strOut);
+	if (buf)
+		kfree(buf);
+	if (strOut)
+		kfree(strOut);
 err_exit:
 	return ret;
 }

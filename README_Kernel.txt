@@ -1,14 +1,13 @@
 ################################################################################
-1. Download and unzip the kernel source of N986BXXU1ATH3.
 
-2. Unzip and update the kernel source of N986BXXS1ATH9.
+1. Download and unzip the kernel source of N986BXXU1ATJ1.
+
+2. Unzip and update the kernel source of N986BXXS1ATJA.
 
 3. How to Build
         - get Toolchain
                 From android git server, codesourcery and etc ..
-                - toolchain/gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-                - toolchain/clang/host/linux-x86/clang-r349610-jopp/bin/aarch64-linux-gnu-
-                
+                - gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-
         - edit Makefile
                 edit "CROSS_COMPILE" to right toolchain path(You downloaded).
                         EX)  CROSS_COMPILE=<android platform directory you download>/android/prebuilts/gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-
@@ -24,10 +23,10 @@
                 $ make ARCH=arm64 exynos9830-c2sxxx_defconfig
                 $ make ARCH=arm64
 
-2. Output files
+4. Output files
         - Kernel : arch/arm64/boot/Image
         - module : drivers/*/*.ko
 
-3. How to Clean
+5. How to Clean
         $ make clean
 ################################################################################

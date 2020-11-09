@@ -105,7 +105,7 @@ static void put_vs4l_sched_param64(struct vs4l_sched_param *kp, struct vs4l_sche
 static int get_vs4l_format64(struct vs4l_format_list *kp, struct vs4l_format_list __user *up)
 {
 	int ret = 0;
-	size_t size;
+	size_t size = 0;
 	struct vs4l_format *kformats_ptr;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_format_list))) {
@@ -118,6 +118,12 @@ static int get_vs4l_format64(struct vs4l_format_list *kp, struct vs4l_format_lis
 				sizeof(struct vs4l_format_list));
 	if (ret) {
 		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
+		goto p_err_format;
+	}
+
+	if (kp->count > VISION_MAX_BUFFER) {
+		vision_err("kp->count(%u) cannot be greater to VISION_MAX_BUFFER(%d)\n", kp->count, VISION_MAX_BUFFER);
+		ret = -EINVAL;
 		goto p_err_format;
 	}
 
@@ -156,7 +162,7 @@ static void put_vs4l_format64(struct vs4l_format_list *kp, struct vs4l_format_li
 static int get_vs4l_param64(struct vs4l_param_list *kp, struct vs4l_param_list __user *up)
 {
 	int ret;
-	size_t size;
+	size_t size = 0;
 	struct vs4l_param *kparams_ptr;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_param_list))) {
@@ -168,6 +174,12 @@ static int get_vs4l_param64(struct vs4l_param_list *kp, struct vs4l_param_list _
 	ret = copy_from_user(kp, (void __user *)up, sizeof(struct vs4l_param_list));
 	if (ret) {
 		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
+		goto p_err_param;
+	}
+
+	if (kp->count > VISION_MAX_BUFFER) {
+		vision_err("kp->count(%u) cannot be greater to VISION_MAX_BUFFER(%d)\n", kp->count, VISION_MAX_BUFFER);
+		ret = -EINVAL;
 		goto p_err_param;
 	}
 
@@ -206,7 +218,7 @@ static void put_vs4l_param64(struct vs4l_param_list *kp, struct vs4l_param_list 
 static int get_vs4l_container64(struct vs4l_container_list *kp, struct vs4l_container_list __user *up)
 {
 	int ret, i, free_buf_num;
-	size_t size;
+	size_t size = 0;
 	struct vs4l_container *kcontainer_ptr;
 	struct vs4l_buffer *kbuffer_ptr = NULL;
 	struct vs4l_profiler *kprofiler;
@@ -275,6 +287,12 @@ static int get_vs4l_container64(struct vs4l_container_list *kp, struct vs4l_cont
 	}
 
 	/* container_list -> (vs4l_container)containers[count] -> (vs4l_buffer)buffers[count] */
+	if (kp->count > VISION_MAX_CONTAINERLIST) {
+		vision_err("kp->count(%u) cannot be greater to VISION_MAX_CONTAINERLIST(%d)\n", kp->count, VISION_MAX_CONTAINERLIST);
+		ret = -EINVAL;
+		goto p_err;
+	}
+
 	size = kp->count * sizeof(struct vs4l_container);
 	if (!access_ok(VERIFY_READ, (void __user *)kp->containers, size)) {
 		vision_err("access to containers ptr failed (%pK)\n",
@@ -364,7 +382,7 @@ static int put_vs4l_profiler(struct vs4l_container_list *kp, struct vs4l_contain
 {
 	int ret;
 	size_t size;
-	struct vs4l_profiler *kprofiler;
+	struct vs4l_profiler *kprofiler = NULL;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_container_list))) {
 		vision_err("access failed from user ptr(%pK)\n", up);

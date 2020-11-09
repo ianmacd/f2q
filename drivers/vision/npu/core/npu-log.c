@@ -83,7 +83,7 @@ const char LOG_LEVEL_MARK[NPU_LOG_INVALID] = {
  */
 int npu_store_log(npu_log_level_e loglevel, const char *fmt, ...)
 {
-	int		ret;
+	int		ret = 0;
 	int		pr_size;
 	size_t		wr_len = 0;
 	size_t		remain;
@@ -238,7 +238,6 @@ void npu_fw_report_init(char *buf_addr, const size_t size)
 	fw_report.line_cnt = 0;
 
 	spin_unlock_irqrestore(&fw_report_lock, intr_flags);
-
 }
 
 void npu_fw_report_deinit(void)
@@ -257,7 +256,6 @@ void npu_fw_report_deinit(void)
 	fw_report.line_cnt = 0;
 
 	spin_unlock_irqrestore(&fw_report_lock, intr_flags);
-
 }
 
 void npu_fw_profile_init(char *buf_addr, const size_t size)
@@ -357,7 +355,7 @@ unlock_exit:
 
 static int npu_store_log_fops_open(struct inode *inode, struct file *file)
 {
-	int				ret;
+	int				ret = 0;
 	struct npu_store_log_read_obj	*robj;
 
 	robj = kzalloc(sizeof(*robj), GFP_ATOMIC);
@@ -380,13 +378,12 @@ static int npu_store_log_fops_open(struct inode *inode, struct file *file)
 	return 0;
 
 err_exit:
-	kfree(robj);
 	return ret;
 }
 
 static int npu_fw_report_fops_open(struct inode *inode, struct file *file)
 {
-	int				ret;
+	int				ret = 0;
 	struct npu_store_log_read_obj	*robj;
 
 	robj = kzalloc(sizeof(*robj), GFP_ATOMIC);
@@ -403,7 +400,6 @@ static int npu_fw_report_fops_open(struct inode *inode, struct file *file)
 	return 0;
 
 err_exit:
-	kfree(robj);
 	return ret;
 }
 
@@ -443,8 +439,6 @@ static int npu_fw_profile_fops_open(struct inode *inode, struct file *file)
 	return 0;
 
 err_exit:
-	kfree(robj);
-
 	return ret;
 }
 
@@ -538,11 +532,9 @@ static ssize_t npu_store_log_fops_read(struct file *file, char __user *outbuf, s
 		/* TODO: Accessing npu_log.wr_pos outside of spinlock is potentially dangerous */
 		ret = wait_event_interruptible_timeout(npu_log.wq, robj->read_pos != npu_log.wr_pos, 1 * HZ);
 		if (ret == -ERESTARTSYS) {
-			ret = 0;
 			goto err_exit;
 		}
 	}
-
 
 	spin_lock_irqsave(&npu_log_lock, intr_flags);
 	copy_len = __npu_store_log_fops_read(robj, tmp_buf, tmp_buf_len);
@@ -559,8 +551,8 @@ static ssize_t npu_store_log_fops_read(struct file *file, char __user *outbuf, s
 
 	ret = copy_len;
 err_exit:
-
-	kfree(tmp_buf);
+	if (tmp_buf)
+		kfree(tmp_buf);
 
 	/* schedule() is insearted to prevent busy-waiting loop around npu_log_lock */
 	schedule();
@@ -569,7 +561,6 @@ err_exit:
 
 int npu_fw_report_store(char *strRep, int nSize)
 {
-	size_t	ret = -1;
 	size_t	wr_len = 0;
 	size_t	remain = fw_report.st_size - fw_report.wr_pos;
 	char	*buf = NULL;
@@ -602,12 +593,12 @@ int npu_fw_report_store(char *strRep, int nSize)
 	fw_report.st_buf[fw_report.wr_pos] = '\0';
 
 	spin_unlock_irqrestore(&fw_report_lock, intr_flags);
-	return (int)ret;
+
+	return 0;
 }
 
 int npu_fw_profile_store(char *strRep, int nSize)
 {
-	size_t	ret = -1;
 	size_t	wr_len = 0;
 	size_t	remain = fw_profile.st_size - fw_profile.wr_pos;
 	char	*buf = NULL;
@@ -640,7 +631,8 @@ int npu_fw_profile_store(char *strRep, int nSize)
 	fw_profile.st_buf[fw_profile.wr_pos] = '\0';
 
 	spin_unlock_irqrestore(&fw_profile_lock, intr_flags);
-	return (int)ret;
+
+	return 0;
 }
 
 
@@ -740,7 +732,8 @@ static ssize_t npu_fw_report_fops_read(struct file *file, char __user *outbuf, s
 
 	ret = copy_len;
 err_exit:
-	kfree(tmp_buf);
+	if (tmp_buf)
+		kfree(tmp_buf);
 	return ret;
 }
 
@@ -794,8 +787,8 @@ static ssize_t npu_fw_profile_fops_read(struct file *file, char __user *outbuf, 
 
 	ret = copy_len;
 err_exit:
-	kfree(tmp_buf);
-
+	if (tmp_buf)
+		kfree(tmp_buf);
 	return ret;
 }
 
@@ -880,7 +873,8 @@ static int npu_store_log_dump(const size_t dump_size)
 		pr_cont("---------- End of NPU log dump ---------------\n");
 	}
 
-	kfree(dump_buf);
+	if (dump_buf)
+		kfree(dump_buf);
 	return 0;
 }
 
@@ -1286,7 +1280,7 @@ int fw_will_note(size_t len)
 /* Exported functions */
 int npu_log_probe(struct npu_device *npu_device)
 {
-	int ret;
+	int ret = 0;
 
 	probe_info("start in npu_log_probe\n");
 
@@ -1300,18 +1294,32 @@ int npu_log_probe(struct npu_device *npu_device)
 
 	/* Log level change function on sysfs */
 	ret = device_create_file(npu_device->dev, &dev_attr_log_level);
-	if (ret)
+	if (ret) {
 		probe_err("device_create_file() failed: ret = %d\n", ret);
+		return ret;
+	}
 
 	/* Register memory store logger */
-	npu_debug_register("dev-log", &npu_store_log_fops);
+	ret = npu_debug_register("dev-log", &npu_store_log_fops);
+	if (ret) {
+		npu_err("npu_debug_register error : ret = %d\n", ret);
+		return ret;
+	}
 	/* Register FW log keeper */
-	npu_debug_register("fw-report", &npu_fw_report_fops);
+	ret = npu_debug_register("fw-report", &npu_fw_report_fops);
+	if (ret) {
+		npu_err("npu_debug_register error : ret = %d\n", ret);
+		return ret;
+	}
 	/* Register FW profile keeper */
-	npu_debug_register("fw-profile", &npu_fw_profile_fops);
+	ret = npu_debug_register("fw-profile", &npu_fw_profile_fops);
+	if (ret) {
+		npu_err("npu_debug_register error : ret = %d\n", ret);
+		return ret;
+	}
 
 	probe_info("complete in npu_log_probe\n");
-	return 0;
+	return ret;
 }
 
 int npu_log_release(struct npu_device *npu_device)

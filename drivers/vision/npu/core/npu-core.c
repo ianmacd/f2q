@@ -39,14 +39,15 @@ int npu_core_on(struct npu_system *system)
 		core = g_npu_core_list[i];
 		active = pm_runtime_active(core->dev);
 		npu_info("%s %d %d\n", __func__, i, core->id);
-		ret = pm_runtime_get_sync(core->dev);
+		ret += pm_runtime_get_sync(core->dev);
 		if (ret)
 			npu_err("fail(%d) in pm_runtime_get_sync\n", ret);
+		
 		pm_runtime_set_active(core->dev);
 
 		if (!active && pm_runtime_active(core->dev)) {
 			npu_info("%s core\n", __func__);
-			ret = npu_soc_core_on(system, core->id);
+			ret += npu_soc_core_on(system, core->id);
 			if (ret)
 				npu_err("fail(%d) in npu_soc_core_on\n", ret);
 		}
@@ -70,9 +71,10 @@ int npu_core_off(struct npu_system *system)
 		//if (ret)
 		//	npu_err("fail(%d) in npu_soc_core_off\n", ret);
 
-		ret = pm_runtime_put_sync(core->dev);
+		ret += pm_runtime_put_sync(core->dev);
 		if (ret)
 			npu_err("fail(%d) in pm_runtime_put_sync\n", ret);
+
 		BUG_ON(ret < 0);
 	}
 	npu_dbg("%s\n", __func__);
@@ -99,7 +101,6 @@ int npu_core_clock_on(struct npu_system *system)
 
 int npu_core_clock_off(struct npu_system *system)
 {
-	int ret = 0;
 	int i;
 	struct npu_core *core;
 
@@ -110,7 +111,7 @@ int npu_core_clock_off(struct npu_system *system)
 		npu_clk_disable_unprepare(&core->clks);
 	}
 	npu_dbg("%s\n", __func__);
-	return ret;
+	return 0;
 }
 
 static int npu_core_probe(struct platform_device *pdev)
@@ -180,7 +181,6 @@ static int npu_core_resume(struct device *dev)
 #ifdef CONFIG_PM
 static int npu_core_runtime_suspend(struct device *dev)
 {
-	int ret = 0;
 	struct npu_core *core;
 
 	BUG_ON(!dev);
@@ -188,16 +188,15 @@ static int npu_core_runtime_suspend(struct device *dev)
 
 	core = dev_get_drvdata(dev);
 
-	npu_dbg("%s clk\n", __func__);
 	npu_clk_disable_unprepare(&core->clks);
 
-	npu_dbg("%s:%d\n", __func__, ret);
-	return ret;
+	npu_dbg("%s:\n", __func__);
+	return 0;
 }
 
 static int npu_core_runtime_resume(struct device *dev)
 {
-	int ret = 0;
+	int ret;
 	struct npu_core *core;
 
 	BUG_ON(!dev);
@@ -207,8 +206,10 @@ static int npu_core_runtime_resume(struct device *dev)
 
 	npu_dbg("%s clk\n", __func__);
 	ret = npu_clk_prepare_enable(&core->clks);
-	if (ret)
+	if (ret) {
 		npu_err("fail(%d) in npu_clk_prepare_enable\n", ret);
+		return ret;
+	}
 
 	npu_dbg("%s:%d\n", __func__, ret);
 	return ret;

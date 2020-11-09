@@ -280,7 +280,7 @@ int npu_scheduler_suspend(struct npu_device *device);
 int npu_scheduler_start(struct npu_device *device);
 int npu_scheduler_stop(struct npu_device *device);
 int npu_scheduler_load(struct npu_device *device, const struct npu_session *session);
-int npu_scheduler_unload(struct npu_device *device, const struct npu_session *session);
+void npu_scheduler_unload(struct npu_device *device, const struct npu_session *session);
 void npu_scheduler_update_sched_param(struct npu_device *device, struct npu_session *session);
 void npu_scheduler_gate(struct npu_device *device, struct npu_frame *frame, bool idle);
 void npu_scheduler_fps_update_idle(struct npu_device *device, struct npu_frame *frame, bool idle);

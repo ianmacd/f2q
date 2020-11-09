@@ -87,7 +87,7 @@ static struct npu_memory_v_buf fw_profile_buf = {
 
 int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 {
-	int ret;
+	int ret = 0;
 	BUG_ON(!system);
 
 	npu_info("start: initialization.\n");
@@ -134,12 +134,12 @@ int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 	}
 
 	npu_info("complete : initialization.\n");
-	return 0;
+	return ret;
 }
 
 static int npu_system_free_fw_dram_log_buf(struct npu_system *system)
 {
-	int ret;
+	int ret = 0;
 
 	BUG_ON(!system);
 
@@ -148,12 +148,12 @@ static int npu_system_free_fw_dram_log_buf(struct npu_system *system)
 
 	ret = npu_memory_free(&system->memory, &dram_kernel_log_buf);
 	if (ret) {
-		npu_err("fail(%d) in kernel Log buffer memory free\n", ret);
+		npu_err("fail(%d) in Log buffer memory free\n", ret);
 		goto err_exit;
 	}
 
 	npu_info("DRAM log buffer for kernel freed.\n");
-	ret = 0;
+	return ret;
 
 err_exit:
 	return ret;
@@ -271,7 +271,7 @@ p_exit:
 /* TODO: Implement throughly */
 int npu_system_release(struct npu_system *system, struct platform_device *pdev)
 {
-	int ret;
+	int ret = 0;
 	struct device *dev;
 	struct npu_device *device;
 
@@ -299,7 +299,7 @@ int npu_system_release(struct npu_system *system, struct platform_device *pdev)
 	if (ret)
 		npu_err("fail(%d) in npu_system_soc_release\n", ret);
 
-	return 0;
+	return ret;
 }
 
 int npu_system_open(struct npu_system *system)
@@ -579,7 +579,7 @@ int npu_system_stop(struct npu_system *system)
 
 p_err:
 
-	return 0;
+	return ret;
 }
 
 int npu_system_save_result(struct npu_session *session, struct nw_result nw_result)
@@ -647,7 +647,7 @@ static int npu_firmware_load(struct npu_system *system, int mode)
 	}
 
 	npu_info("complete in npu_firmware_load\n");
-	return 0;
+	return ret;
 err_exit:
 
 	npu_info("error(%d) in npu_firmware_load\n", ret);

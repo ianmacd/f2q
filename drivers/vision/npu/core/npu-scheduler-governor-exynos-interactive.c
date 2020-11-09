@@ -401,6 +401,11 @@ static int npu_governor_exynos_interactive_target(
 	int no_issue = 1;
 	u32 load_idle;
 
+	if ((!info) || (!d)) {
+		npu_err("invalid info or dvfs_info\n");
+		return -EINVAL;
+	}
+
 	/* get property for governor of the ip */
 	p = (struct npu_governor_exynos_interactive_prop *)d->gov_prop;
 
@@ -508,9 +513,11 @@ int npu_governor_exynos_interactive_register(struct npu_scheduler_info *info)
 	npu_info("creating sysfs group %s\n",
 			npu_exynos_interactive_attr_group.name);
 
-	if (sysfs_create_group(&info->dev->kobj, &npu_exynos_interactive_attr_group))
+	if (sysfs_create_group(&info->dev->kobj, &npu_exynos_interactive_attr_group)) {
 		npu_err("failed to create sysfs for %s\n",
 			npu_exynos_interactive_attr_group.name);
+		ret = -EINVAL;
+	}
 
 	return ret;
 }

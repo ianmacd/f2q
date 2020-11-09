@@ -299,10 +299,8 @@ void npu_governor_userspace_stop(struct npu_scheduler_dvfs_info *d)
 	npu_info("%s stop done\n", d->name);
 }
 
-int npu_governor_userspace_register(struct npu_scheduler_info *info)
+void npu_governor_userspace_register(struct npu_scheduler_info *info)
 {
-	int ret = 0;
-
 	BUG_ON(!info);
 
 	npu_info("register userspace governor\n");
@@ -316,8 +314,6 @@ int npu_governor_userspace_register(struct npu_scheduler_info *info)
 	if (sysfs_create_group(&info->dev->kobj, &npu_userspace_attr_group))
 		npu_err("failed to create sysfs for %s\n",
 			npu_userspace_attr_group.name);
-
-	return ret;
 }
 
 int npu_governor_userspace_unregister(struct npu_scheduler_info *info)

@@ -90,8 +90,10 @@ int npu_system_soc_probe(struct npu_system *system, struct platform_device *pdev
 	}
 
 	ret = npu_stm_probe(system);
-	if (ret)
+	if (ret) {
 		probe_err("npu_stm_probe error : %d\n", ret);
+		goto p_err;
+	}
 
 #elif defined(CONFIG_NPU_LOOPBACK)
 	system->tcu_sram.vaddr = kmalloc(0x80000, GFP_KERNEL);
@@ -106,13 +108,12 @@ int npu_system_soc_probe(struct npu_system *system, struct platform_device *pdev
 
 #endif
 p_err:
-
 	return ret;
 }
 
 int npu_system_soc_release(struct npu_system *system, struct platform_device *pdev)
 {
-	int ret;
+	int ret = 0;
 
 	ret = npu_stm_release(system);
 	if (ret)
@@ -168,7 +169,6 @@ int npu_system_soc_resume(struct npu_system *system, u32 mode)
 #endif
 	BUG_ON(!system);
 
-
 	/* Clear resume steps */
 	system->resume_soc_steps = 0;
 
@@ -219,7 +219,7 @@ int npu_system_soc_suspend(struct npu_system *system)
 	});
 
 	BIT_CHECK_AND_EXECUTE(NPU_SYS_RESUME_SOC_CPU_ON, &system->resume_soc_steps, "Turn NPU cpu off", {
-		ret = npu_cpu_off(system);
+		ret += npu_cpu_off(system);
 		if (ret)
 			npu_err("fail(%d) in npu_cpu_off\n", ret);
 	});
@@ -341,7 +341,7 @@ static int npu_cpu_on(struct npu_system *system)
 	ret = dsp_npu_release(true, system->fw_npu_memory_buffer->daddr);
 	if (ret) {
 		npu_err("Failed to release CPU_SS : %d\n", ret);
-                goto err_exit;
+		goto err_exit;
 	}
 #else
 	npu_info("exynos_smc: setting DSP_CPU_INITVTOR(0x%x) with (0x%x).\n", DSP_CPU_INITVTOR, (u32)system->fw_npu_memory_buffer->daddr);
@@ -448,7 +448,7 @@ static int npu_cpu_off(struct npu_system *system)
 	ret = dsp_npu_release(false, 0);
 	if (ret) {
 		npu_err("Failed to release CPU_SS : %d\n", ret);
-                goto err_exit;
+		goto err_exit;
 	}
 #endif
 
@@ -697,6 +697,10 @@ static int init_iomem_area(struct npu_system *system)
 		if (init_data[di].heapname) {
 			bd = (struct npu_memory_buffer **)init_data[di].area_info;
 			*bd = kcalloc(1, sizeof(struct npu_memory_buffer), GFP_KERNEL);
+			if (!(*bd)) {
+				probe_err("*bd is NULL\n");
+				goto err_exit;
+			}
 			(*bd)->size = (iomem_data + i)->size;
 			ret = npu_memory_alloc_from_heap(system->pdev, *bd,
 					(iomem_data + i)->start, init_data[di].heapname);
@@ -746,6 +750,8 @@ static int init_iomem_area(struct npu_system *system)
 	probe_trace("complete in init_iomem_area\n");
 	return 0;
 err_exit:
+	if (*bd)
+		kfree(*bd);
 	probe_err("error(%d) in init_iomem_area\n", ret);
 	return ret;
 }
