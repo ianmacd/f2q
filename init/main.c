@@ -779,7 +779,9 @@ void kdp_init(void)
 	cred.bp_cred_secptr 	= rkp_get_offset_bp_cred();
 	cred.verifiedbootstate	= (u64)verifiedbootstate;
 #ifdef CONFIG_SAMSUNG_PRODUCT_SHIP
+#ifdef CONFIG_SECURITY_SELINUX_DEVELOP
 	cred.selinux.selinux_enforcing_va  = (u64)&selinux_enforcing;
+#endif
 	cred.selinux.ss_initialized_va	= (u64)&ss_initialized;
 #else
 	cred.selinux.selinux_enforcing_va  = 0;
