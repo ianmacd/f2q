@@ -107,7 +107,7 @@ int32_t cam_check_stream_on(
 		case SENSOR_ID_S5KGH1:
 		case SENSOR_ID_S5K2L3:
 		case SENSOR_ID_S5KHM1:
-#if !defined(CONFIG_SEC_F2Q_PROJECT)
+#if !defined(CONFIG_SEC_F2Q_PROJECT) && !defined(CONFIG_SEC_VICTORY_PROJECT)
 		case SENSOR_ID_S5K3M5:
 #endif
 			ret = 1;
@@ -207,6 +207,11 @@ int cam_sensor_read_frame_count(struct cam_sensor_ctrl_t *s_ctrl, uint32_t* fram
 	int rc = 0;
 	uint32_t FRAME_COUNT_REG_ADDR = 0x0005;
 
+#if defined(CONFIG_SEC_R8Q_PROJECT)
+	if (s_ctrl->sensordata->slave_info.sensor_id == HI847_SENSOR_ID)
+		FRAME_COUNT_REG_ADDR = 0x0732;
+#endif
+
 	rc = camera_io_dev_read(&s_ctrl->io_master_info, FRAME_COUNT_REG_ADDR,
 		frame_cnt, CAMERA_SENSOR_I2C_TYPE_WORD, CAMERA_SENSOR_I2C_TYPE_BYTE);
 	if (rc < 0)
@@ -230,7 +235,17 @@ int cam_sensor_wait_stream_on(struct cam_sensor_ctrl_t *s_ctrl)
 			rc = cam_sensor_read_frame_count(s_ctrl, &frame_cnt);
 			if (rc < 0)
 				break;
+
+#if defined(CONFIG_SEC_R8Q_PROJECT)
+		if (((s_ctrl->sensordata->slave_info.sensor_id == HI847_SENSOR_ID) && ((frame_cnt & 0x01)  == 0x01))
+			|| ((s_ctrl->sensordata->slave_info.sensor_id != HI847_SENSOR_ID) && (frame_cnt != 0xFF)
+			&& (frame_cnt > 0))) {
+
+			if (s_ctrl->sensordata->slave_info.sensor_id == HI847_SENSOR_ID)
+				usleep_range(4000, 5000);
+#else
 			if ((frame_cnt != 0xFF) &&	(frame_cnt > 0)) {
+#endif
 				CAM_INFO(CAM_SENSOR, "[CNT_DBG] 0x%x : Last frame_cnt 0x%x",
 					s_ctrl->sensordata->slave_info.sensor_id, frame_cnt);
 				return 0;
@@ -267,10 +282,22 @@ int cam_sensor_wait_stream_off(struct cam_sensor_ctrl_t *s_ctrl)
 		usleep_range(2000, 3000);
 		do {
 			rc = cam_sensor_read_frame_count(s_ctrl, &frame_cnt);
-		if (rc < 0)
-			break;
-    		if (frame_cnt == 0xFF)
+			if (rc < 0)
+				break;
+
+#if defined(CONFIG_SEC_R8Q_PROJECT)
+			if (((s_ctrl->sensordata->slave_info.sensor_id == HI847_SENSOR_ID) && ((frame_cnt & 0x01)  == 0x00))
+				|| ((s_ctrl->sensordata->slave_info.sensor_id != HI847_SENSOR_ID) && (frame_cnt == 0xFF))) {
+
+				if (s_ctrl->sensordata->slave_info.sensor_id == HI847_SENSOR_ID)
+					usleep_range(1000, 1010);
+
+				 return 0;
+			}
+#else
+  			if (frame_cnt == 0xFF)
 				return 0;
+#endif
 			CAM_INFO(CAM_SENSOR, "[CNT_DBG] retry cnt : %d, Stream off, frame_cnt : 0x%x", retry_cnt, frame_cnt);
 			retry_cnt--;
 			usleep_range(5000, 6000);
@@ -1670,7 +1697,10 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 #endif
 
 #if defined(CONFIG_CAMERA_SSM_I2C_ENV)
-		g_s_ctrl_ssm = s_ctrl;
+		if (s_ctrl->id == CAMERA_0)
+		{
+			g_s_ctrl_ssm = s_ctrl;
+		}
 #endif
 		if (copy_to_user(u64_to_user_ptr(cmd->handle),
 			&sensor_acq_dev,

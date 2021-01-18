@@ -1672,7 +1672,7 @@ int cam_ois_init(struct cam_ois_ctrl_t *o_ctrl)
 								if (hw_param != NULL) {
 									CAM_ERR(CAM_HWB, "[R][OIS] Err\n");
 									hw_param->i2c_ois_err_cnt++;
-									hw_param->need_update_to_file = TRUE;
+									hw_param->need_update_to_file = true;
 								}
 							}
 							break;
@@ -1683,7 +1683,7 @@ int cam_ois_init(struct cam_ois_ctrl_t *o_ctrl)
 								if (hw_param != NULL) {
 									CAM_ERR(CAM_HWB, "[F][OIS] Err\n");
 									hw_param->i2c_ois_err_cnt++;
-									hw_param->need_update_to_file = TRUE;
+									hw_param->need_update_to_file = true;
 								}
 							}
 							break;
@@ -1695,7 +1695,7 @@ int cam_ois_init(struct cam_ois_ctrl_t *o_ctrl)
 								if (hw_param != NULL) {
 									CAM_ERR(CAM_HWB, "[F3][OIS] Err\n");
 									hw_param->i2c_ois_err_cnt++;
-									hw_param->need_update_to_file = TRUE;
+									hw_param->need_update_to_file = true;
 								}
 							}
 							break;
@@ -1705,7 +1705,7 @@ int cam_ois_init(struct cam_ois_ctrl_t *o_ctrl)
 								if (hw_param != NULL) {
 									CAM_ERR(CAM_HWB, "[F2][OIS] Err\n");
 									hw_param->i2c_ois_err_cnt++;
-									hw_param->need_update_to_file = TRUE;
+									hw_param->need_update_to_file = true;
 								}
 							}
 							break;
@@ -1718,7 +1718,7 @@ int cam_ois_init(struct cam_ois_ctrl_t *o_ctrl)
 								if (hw_param != NULL) {
 									CAM_ERR(CAM_HWB, "[R2][OIS] Err\n");
 									hw_param->i2c_ois_err_cnt++;
-									hw_param->need_update_to_file = TRUE;
+									hw_param->need_update_to_file = true;
 								}
 							}
 							break;
@@ -1730,7 +1730,7 @@ int cam_ois_init(struct cam_ois_ctrl_t *o_ctrl)
 								if (hw_param != NULL) {
 									CAM_ERR(CAM_HWB, "[R3][OIS] Err\n");
 									hw_param->i2c_ois_err_cnt++;
-									hw_param->need_update_to_file = TRUE;
+									hw_param->need_update_to_file = true;
 								}
 							}
 							break;
@@ -3689,7 +3689,12 @@ int cam_ois_write_gyro_orientation(struct cam_ois_ctrl_t *o_ctrl)
            new_data1[0] = 0x01, new_data1[1] = 0x01, new_data1[2] = 0x01;
            new_data2[0] = 0x00, new_data2[1] = 0x00;
 	}
-#elif defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_MACH_R8Q_EUR_OPEN) || defined(CONFIG_MACH_R8Q_CHN_HKX) || defined(CONFIG_MACH_R8Q_CHN_OPEN)\
+	|| defined(CONFIG_MACH_R8Q_KOR_SINGLE)
+	new_data1[0] = 0x00, new_data1[1] = 0x01, new_data1[2] = 0x01;
+	new_data2[0] = 0x01, new_data2[1] = 0x00;
+#endif
+#elif defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 	uint8_t new_data1[3] = { 0x00, 0x00, 0x01 };
 	uint8_t new_data2[2] = { 0x01, 0x01 };
 #else

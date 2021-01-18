@@ -20,7 +20,9 @@ config MST_LDO
 			&& !(MACH_C1Q_CHN_OPEN && !(MACH_C1Q_CHN_HK) && !(SEC_FACTORY)) \
 			&& !(MACH_C2Q_CHN_OPEN && !(MACH_C2Q_CHN_HK) && !(SEC_FACTORY)) \
 			&& !(MACH_F2Q_CHN_OPEN && !(MACH_F2Q_CHN_HKX) && !(SEC_FACTORY)) \
-			&& !(MACH_BLOOMXQ_CHN_OPEN && !(MACH_BLOOMXQ_CHN_HKX) && !(SEC_FACTORY))
+			&& !(MACH_BLOOMXQ_CHN_OPEN && !(MACH_BLOOMXQ_CHN_HKX) && !(SEC_FACTORY)) \
+			&& !(MACH_R8Q_CAN_SINGLE) && !(MACH_R8Q_CHN_HKX) && !(MACH_R8Q_CHN_OPEN) && !(MACH_R8Q_EUR_OPEN) \
+			&& !(SEC_VICTORY_PROJECT)
 	default n
 	help
 	This enables the MST LDO kernel driver
@@ -34,7 +36,9 @@ config MST_V2
 			&& !(MACH_C1Q_CHN_OPEN && !(MACH_C1Q_CHN_HK) && !(SEC_FACTORY)) \
 			&& !(MACH_C2Q_CHN_OPEN && !(MACH_C2Q_CHN_HK) && !(SEC_FACTORY)) \
 			&& !(MACH_F2Q_CHN_OPEN && !(MACH_F2Q_CHN_HKX) && !(SEC_FACTORY)) \
-			&& !(MACH_BLOOMXQ_CHN_OPEN && !(MACH_BLOOMXQ_CHN_HKX) && !(SEC_FACTORY))
+			&& !(MACH_BLOOMXQ_CHN_OPEN && !(MACH_BLOOMXQ_CHN_HKX) && !(SEC_FACTORY)) \
+			&& !(MACH_R8Q_CAN_SINGLE) && !(MACH_R8Q_CHN_HKX) && !(MACH_R8Q_CHN_OPEN) && !(MACH_R8Q_EUR_OPEN) \
+			&& !(SEC_VICTORY_PROJECT)
 	default n
 	help
 	This enables the MST V2 codes
@@ -72,7 +76,9 @@ config MFC_CHARGER
 			&& !(MACH_C1Q_CHN_OPEN && !(MACH_C1Q_CHN_HK) && !(SEC_FACTORY)) \
 			&& !(MACH_C2Q_CHN_OPEN && !(MACH_C2Q_CHN_HK) && !(SEC_FACTORY)) \
 			&& !(MACH_F2Q_CHN_OPEN && !(MACH_F2Q_CHN_HKX) && !(SEC_FACTORY)) \
-			&& !(MACH_BLOOMXQ_CHN_OPEN && !(MACH_BLOOMXQ_CHN_HKX) && !(SEC_FACTORY))
+			&& !(MACH_BLOOMXQ_CHN_OPEN && !(MACH_BLOOMXQ_CHN_HKX) && !(SEC_FACTORY)) \
+			&& !(MACH_R8Q_CAN_SINGLE) && !(MACH_R8Q_CHN_HKX) && !(MACH_R8Q_CHN_OPEN) && !(MACH_R8Q_EUR_OPEN) \
+			&& !(SEC_VICTORY_PROJECT)
 	default n
 	help
 	This enables the MFC IC sysfs node

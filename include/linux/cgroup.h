@@ -62,6 +62,7 @@ struct css_task_iter {
 	struct list_head		*mg_tasks_head;
 	struct list_head		*dying_tasks_head;
 
+	struct list_head		*cur_tasks_head;
 	struct css_set			*cur_cset;
 	struct css_set			*cur_dcset;
 	struct task_struct		*cur_task;
@@ -128,6 +129,8 @@ void cgroup_free(struct task_struct *p);
 
 int cgroup_init_early(void);
 int cgroup_init(void);
+
+int cgroup_parse_float(const char *input, unsigned dec_shift, s64 *v);
 
 /*
  * Iteration helpers and macros.

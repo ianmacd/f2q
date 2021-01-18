@@ -1977,7 +1977,7 @@ static ssize_t rear3_type_show(struct device *dev,
 	int rc = 0;
 #if defined(CONFIG_SEC_Z3Q_PROJECT)
 	char cam_type[] = "SONY_IMX586\n";
-#elif  defined(CONFIG_SEC_C2Q_PROJECT)  || defined(CONFIG_SEC_F2Q_PROJECT)
+#elif  defined(CONFIG_SEC_C2Q_PROJECT)  || defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 	char cam_type[] = "SLSI_S5K3M5\n";
 #elif defined(CONFIG_SEC_R8Q_PROJECT)
 	char cam_type[] = "HYNIX_HI847\n";
@@ -2423,8 +2423,9 @@ static ssize_t rear2_type_show(struct device *dev,
 	char cam_type[] = "SLSI_S5K2L3\n";
 #elif defined(CONFIG_SEC_GTS7XL_PROJECT) || defined(CONFIG_SEC_GTS7L_PROJECT)
 	char cam_type[] = "SLSI_S5K5E9\n";
-#elif defined(CONFIG_SEC_BLOOMXQ_PROJECT) || defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_R8Q_PROJECT)
+#elif defined(CONFIG_SEC_BLOOMXQ_PROJECT) || defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_R8Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 	char cam_type[] = "SLSI_S5K3L6\n";
+
 #else
 	char cam_type[] = "SLSI_S5K2LA\n";
 #endif

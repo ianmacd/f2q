@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -55,7 +55,7 @@ struct reg_info {
 	struct regulator *reg;
 	int uV;
 	int uA;
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 	bool valid;
 #endif
 };
@@ -312,7 +312,7 @@ static int of_read_regs(struct device *dev, struct reg_info **regs_ref,
 					      &reg_name);
 
 		regs[i].reg = devm_regulator_get(dev, reg_name);
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 		regs[i].valid = true;
 #endif
 		if (IS_ERR(regs[i].reg)) {
@@ -321,7 +321,7 @@ static int of_read_regs(struct device *dev, struct reg_info **regs_ref,
 			if (rc != -EPROBE_DEFER)
 				dev_err(dev, "Failed to get %s\n regulator",
 								reg_name);
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 			if (!strcmp(reg_name, "subsensor_vdd"))
 			{
 				regs[i].valid = false;
@@ -471,7 +471,7 @@ static int enable_regulators(struct pil_tz_data *d, struct device *dev,
 	int i, rc = 0;
 
 	for (i = 0; i < reg_count; i++) {
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 		if (!regs[i].valid) {
 			dev_err(dev, "reg[%d] invalid", i);
 			continue;
@@ -538,7 +538,7 @@ static void disable_regulators(struct pil_tz_data *d, struct reg_info *regs,
 	int i;
 
 	for (i = 0; i < reg_count; i++) {
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 		if (!regs[i].valid)
 			continue;
 #endif
@@ -1290,6 +1290,9 @@ static int pil_tz_driver_probe(struct platform_device *pdev)
 			goto err_ramdump;
 		}
 	}
+
+	d->desc.sequential_loading = of_property_read_bool(pdev->dev.of_node,
+						"qcom,sequential-fw-load");
 
 	d->ramdump_dev = create_ramdump_device(d->subsys_desc.name,
 								&pdev->dev);

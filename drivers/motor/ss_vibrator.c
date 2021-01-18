@@ -958,7 +958,7 @@ static void regulator_power_onoff(struct ss_vib *vib, int onoff)
 		}
 
 		if (f_multi_freq)
-			ret = regulator_set_voltage(reg_ldo, 3300000, 3300000);
+			ret = regulator_set_voltage(reg_ldo, 3200000, 3200000);
 		else
 			ret = regulator_set_voltage(reg_ldo, 2800000, 2800000);
 	}

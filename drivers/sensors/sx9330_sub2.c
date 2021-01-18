@@ -64,13 +64,13 @@
 				| MSK_IRQSTAT_COMP)
 
 #ifdef CONFIG_SENSORS_HALL
-#define HALLIC_PATH		"/sys/class/sec/sec_key/hall_detect"
+#define HALLIC_PATH		"/sys/class/sec/hall_ic/hall_detect"
 #endif
 #ifdef CONFIG_CERTIFY_HALL
-#define HALLIC_CERT_PATH	"/sys/class/sec/sec_key/certify_hall_detect"
+#define HALLIC_CERT_PATH	"/sys/class/sec/hall_ic/certify_hall_detect"
 #endif
 #ifdef CONFIG_FOLDER_HALL
-#define HALLIC_FOLD_PATH	"/sys/class/sec/sec_flip/flipStatus"
+#define HALLIC_FOLD_PATH	"/sys/class/sec/hall_ic/flip_status"
 #endif
 
 struct sx9330_p {

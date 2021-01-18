@@ -2,7 +2,6 @@
  * Copyright (C) 2010 - 2017 Novatek, Inc.
  *
  * $Revision: 31202 $
- * $Date: 2018-07-23 10:56:09 +0800 (週一, 23 七月 2018) $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -323,6 +322,15 @@ int nvt_ts_i2c_read(struct nvt_ts_data *ts, u16 address, u8 *buf, u16 len)
 	if (unlikely(retries == NVT_TS_I2C_RETRY_CNT))
 		input_err(true, &ts->client->dev, "%s: I2C read over retry limit\n", __func__);
 
+	if (ts->debug_flag & NVT_TS_DEBUG_PRINT_I2C_READ_CMD) {
+		int i;
+
+		pr_info("%s: i2c_cmd: R: %02X | ", SECLOG, buf[0]);
+		for (i = 0; i < len - 1; i++)
+			pr_cont("%02X ", buf[i + 1]);
+		pr_cont("\n");
+	}
+
 err:
 	return ret;
 }
@@ -381,6 +389,15 @@ int nvt_ts_i2c_write(struct nvt_ts_data *ts, u16 address, u8 *buf, u16 len)
 
 	if (unlikely(retries == NVT_TS_I2C_RETRY_CNT))
 		input_err(true, &ts->client->dev, "%s: I2C write over retry limit\n", __func__);
+
+	if (ts->debug_flag & NVT_TS_DEBUG_PRINT_I2C_WRITE_CMD) {
+		int i;
+
+		pr_info("%s: i2c_cmd: W: ", SECLOG);
+		for (i = 0; i < len; i++)
+			pr_cont("%02X ", buf[i]);
+		pr_cont("\n");
+	}
 
 err:
 	return ret;
@@ -822,7 +839,7 @@ static void nvt_ts_print_info(struct nvt_ts_data *ts)
 			ts->print_info_cnt_open, ts->print_info_cnt_release);
 }
 
-static void nvt_ts_release_all_finger(struct nvt_ts_data *ts)
+void nvt_ts_release_all_finger(struct nvt_ts_data *ts)
 {
 	char location[NVT_TS_LOCATION_DETECT_SIZE] = { 0, };
 	int i = 0;
@@ -1376,34 +1393,37 @@ static void nvt_ts_close(struct nvt_ts_data *ts)
 		ts->sec_function = mode;
 	}
 
-	if (ts->lowpower_mode) {
+	if (ts->lowpower_mode && !(ts->platdata->scanoff_cover_close && ts->flip_enable)) {
 		//---write command to enter "wakeup gesture mode"---
 		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = 0x13;
+		buf[1] = NVT_CMD_GESTURE_MODE;
 		nvt_ts_i2c_write(ts, I2C_FW_Address, buf, 2);
 
 		if (device_may_wakeup(&ts->client->dev))
 			enable_irq_wake(ts->client->irq);
 
 		ts->power_status = POWER_LPM_STATUS;
+
+		input_info(true, &ts->client->dev, "%s: enter lp mode, 0x%02X\n",
+				__func__, ts->lowpower_mode);
 	} else {
 		//---write i2c command to enter "deep sleep mode"---
 		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = 0x11;
+		buf[1] = NVT_CMD_DEEP_SLEEP_MODE;
 		nvt_ts_i2c_write(ts, I2C_FW_Address, buf, 2);
 
 		nvt_interrupt_set(ts, INT_DISABLE);
 
 		ts->power_status = POWER_OFF_STATUS;
+
+		input_info(true, &ts->client->dev, "%s: deep sleep mode, lp:0x%02X, flip:%d\n",
+				__func__, ts->lowpower_mode, ts->flip_enable);
 	}
 	ts->untouchable_area = false;
 
 	msleep(50);
 
 	nvt_ts_release_all_finger(ts);
-
-	input_info(true, &ts->client->dev, "%s:%s 0x%02X\n",
-			__func__, ts->lowpower_mode ? " enter lp mode" : "", ts->lowpower_mode);
 
 	mutex_unlock(&ts->lock);
 }
@@ -1612,6 +1632,7 @@ static struct nvt_ts_platdata *nvt_ts_parse_dt(struct device *dev)
 
 	platdata->support_dex = of_property_read_bool(np, "support_dex_mode");
 	platdata->enable_settings_aot = of_property_read_bool(np, "enable_settings_aot");
+	platdata->scanoff_cover_close = of_property_read_bool(np, "novatek,scanoff_when_cover_closed");
 
 	if (of_property_read_u32(np, "novatek,bringup", &platdata->bringup) < 0)
 		platdata->bringup = 0;

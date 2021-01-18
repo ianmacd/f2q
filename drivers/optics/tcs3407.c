@@ -1599,8 +1599,13 @@ static int tcs3407_power_ctrl(struct tcs3407_device_data *data, int onoff)
 		}
 	}
 
+#if defined(CONFIG_SEC_R8Q_PROJECT)
 	regulator_vdd_1p8 =
 		regulator_get(&data->client->dev, "vdd_1p8");
+#else
+	regulator_vdd_1p8 =
+		regulator_get(&data->client->dev, data->vdd_1p8);
+#endif
 	if (IS_ERR(regulator_vdd_1p8) || regulator_vdd_1p8 == NULL) {
 		ALS_dbg("%s - get vdd_1p8 regulator failed\n", __func__);
 		rc = PTR_ERR(regulator_vdd_1p8);
@@ -2571,6 +2576,8 @@ struct device_attribute *attr, const char *buf, size_t size)
 		return err;
 	}
 
+	mutex_lock(&data->activelock);
+
 	data->eol_flash_type = EOL_TORCH;
 
 	switch (mode) {
@@ -2616,8 +2623,6 @@ struct device_attribute *attr, const char *buf, size_t size)
 	ALS_dbg("%s - mode = %d-%d, gSpec_ir = %d - %d, gSpec_clear = %d - %d, gSpec_icratio = %d - %d eol_flash_type : %d\n",	__func__, mode,
 		preEnalble, gSpec_ir_min, gSpec_ir_max, gSpec_clear_min, gSpec_clear_max, gSpec_icratio_min, gSpec_icratio_max, data->eol_flash_type);
 
-	mutex_lock(&data->activelock);
-
 	if (!preEnalble) {
 		tcs3407_irq_set_state(data, PWR_ON);
 
@@ -2648,11 +2653,7 @@ struct device_attribute *attr, const char *buf, size_t size)
 	AMS_SET_ALS_GAIN(EOL_GAIN, err);
 	ALS_dbg("%s - fixed ALS GAIN : %d\n", __func__, EOL_GAIN);
 
-	mutex_unlock(&data->activelock);
-
 	tcs3407_eol_mode(data);
-
-	mutex_lock(&data->activelock);
 
 	if (data->regulator_state == 0) {
 		ALS_dbg("%s - already power off - disable skip\n",
@@ -3104,6 +3105,12 @@ static int tcs3407_parse_dt(struct tcs3407_device_data *data)
 	if (data->pin_flash_en < 0) {
 		ALS_err("%s - get pin_flash_en error\n", __func__);
 	}
+#endif
+
+#if !defined(CONFIG_SEC_R8Q_PROJECT)
+	if (of_property_read_string(dNode, "als_rear,vdd_1p8",
+		(char const **)&data->vdd_1p8) < 0)
+		ALS_dbg("%s - vdd_1p8 doesn`t exist\n", __func__);
 #endif
 
 	if (of_property_read_string(dNode, "als_rear,i2c_1p8",

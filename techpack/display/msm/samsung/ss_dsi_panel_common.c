@@ -1543,6 +1543,30 @@ error:
 	return -ENOMEM;
 }
 
+#define WAIT_PM_RESUME_TIMEOUT_MS	(3000)	/* 3 seconds */
+
+static int ss_wait_for_pm_resume(struct samsung_display_driver_data *vdd)
+{
+	struct drm_device *ddev = GET_DRM_DEV(vdd);
+	int timeout = WAIT_PM_RESUME_TIMEOUT_MS;
+
+	while (!pm_runtime_enabled(ddev->dev) && --timeout)
+		usleep_range(1000, 1000); /* 1ms */
+
+	if (timeout < WAIT_PM_RESUME_TIMEOUT_MS)
+		LCD_INFO("wait for pm resume (timeout: %d)", timeout);
+
+	if (!timeout) {
+		LCD_ERR("pm resume timeout \n");
+
+		/* Should not reach here... Add panic to debug further */
+		panic("timeout wait for pm resume");
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
 int ss_send_cmd(struct samsung_display_driver_data *vdd,
 		enum dsi_cmd_set_type type)
 {
@@ -1603,11 +1627,17 @@ int ss_send_cmd(struct samsung_display_driver_data *vdd,
 	else
 		LCD_DEBUG("[DISPLAY_%d]Send cmd(%d): %s ++\n", vdd->ndx, type, ss_get_cmd_name(type));
 
-	rc = dsi_display_pm_runtime_update(dsi_display, true);
-	if (rc < 0) {
-		LCD_ERR("[%s] failed, rc=%d\n", dsi_display->name, rc);
+	/* In pm suspend status, it fails to control display clock.
+	 * In result,
+	 * - fails to transmit command to DDI.
+	 * - sometimes causes unbalanced reference count of qc display clock.
+	 * To prevent above issues, wait for pm resume before control display clock.
+	 * You don't have to force to wake up PM system by calling pm_wakeup_ws_event().
+	 * If cpu core reach to this code, it means interrupt or the other event is waking up
+	 * PM system. So, it is enough just waiting until PM resume.
+	 */
+	if (ss_wait_for_pm_resume(vdd))
 		goto error;
-	}
 
 	/* case 03063186:
 	 * To prevent deadlock between phandle->phandle_lock and panel->panel_lock,
@@ -1618,8 +1648,6 @@ int ss_send_cmd(struct samsung_display_driver_data *vdd,
 	if (rc) {
 		LCD_ERR("[%s] failed to enable DSI core clocks, rc=%d\n",
 				dsi_display->name, rc);
-		rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
-				DSI_ALL_CLKS, DSI_CLK_OFF);
 		goto error;
 	}
 
@@ -1632,8 +1660,6 @@ int ss_send_cmd(struct samsung_display_driver_data *vdd,
 				dsi_display->name, rc);
 		goto error;
 	}
-
-	dsi_display_pm_runtime_update(dsi_display, false);
 
 	if (vdd->debug_data->print_cmds)
 		LCD_INFO("Send cmd(%d): %s --\n", type, ss_get_cmd_name(type));
@@ -2588,8 +2614,12 @@ int ss_panel_on_pre(struct samsung_display_driver_data *vdd)
 	if (vdd->br_info.common_br.gamma_mode2_support) {
 		struct flash_gm2 *gm2_table = &vdd->br_info.gm2_table;
 
-		if (gm2_table->mtp_one_vbias_mode) {
-			/* read one vbias mode from MTP */
+		if (gm2_table->mtp_one_vbias_mode &&
+				(vdd->is_factory_mode || !gm2_table->flash_gm2_init_done)) {
+			/* Read one vbias mode from MTP.
+			 * Factory binary has panel swap test. For that case, read vbias MTP data
+			 * in every display on sequence.
+			 */
 			LCD_INFO("read vbias mtp data\n");
 			ss_panel_data_read(vdd, RX_VBIAS_MTP, gm2_table->mtp_one_vbias_mode, LEVEL1_KEY);
 		}
@@ -2846,6 +2876,10 @@ int ss_panel_off_post(struct samsung_display_driver_data *vdd)
 
 	if (vdd->finger_mask)
 		vdd->finger_mask = false;
+
+	/* To prevent panel off without finger off */
+	if (vdd->br_info.common_br.finger_mask_hbm_on)
+		vdd->br_info.common_br.finger_mask_hbm_on = false;
 
 	LCD_INFO("[DISPLAY_%d] -\n", vdd->ndx);
 	SS_XLOG(SS_XLOG_FINISH);
@@ -3675,10 +3709,20 @@ static void ss_panel_parse_dt_bright_tables(struct device_node *np,
 				"samsung,candela_map_table_rev", panel_rev,
 				ss_parse_candella_mapping_table);
 
+#if (defined(CONFIG_MACH_X1Q_JPN_SINGLE) || \
+		(defined(CONFIG_MACH_Y2Q_JPN_SINGLE) && !defined(CONFIG_MACH_Y2Q_JPN_DCMOLY)) || \
+		defined(CONFIG_MACH_BLOOMXQ_JPN_SINGLE))
+		LCD_INFO("parse jpn AOD brightness table\n");
+		parse_dt_data(np, &info->candela_map_table[AOD][panel_rev],
+				sizeof(struct candela_map_table),
+				"samsung,aod_candela_map_table_jpn_rev", panel_rev,
+				ss_parse_candella_mapping_table);
+#else
 		parse_dt_data(np, &info->candela_map_table[AOD][panel_rev],
 				sizeof(struct candela_map_table),
 				"samsung,aod_candela_map_table_rev", panel_rev,
 				ss_parse_candella_mapping_table);
+#endif
 
 		parse_dt_data(np, &info->candela_map_table[HBM][panel_rev],
 				sizeof(struct candela_map_table),
@@ -4483,6 +4527,32 @@ static void ss_panel_parse_dt(struct samsung_display_driver_data *vdd)
 		ss_panel_parse_spi_cmd(np, vdd);
 	}
 
+	/* SWIRE Rework */
+	vdd->fw_up.is_support = of_property_read_bool(np, "samsung,support_firmware_update");
+	LCD_INFO("[FW_UP]is_support = %d\n", vdd->fw_up.is_support);
+
+	if (vdd->fw_up.is_support) {
+		/* ERASE */
+		rc = of_property_read_u32(np, "samsung,firmware_update_erase_delay_us", tmp);
+		vdd->fw_up.erase_delay_us = (!rc ? tmp[0] : 0);
+
+		/* WRITE */
+		rc = of_property_read_u32(np, "samsung,firmware_update_write_delay_us", tmp);
+		vdd->fw_up.write_delay_us = (!rc ? tmp[0] : 0);
+
+		/* READ */
+		rc = of_property_read_u32(np, "samsung,firmware_update_read_delay_us", tmp);
+		vdd->fw_up.read_delay_us = (!rc ? tmp[0] : 0);
+		rc = of_property_read_u32(np, "samsung,firmware_update_status_read_value", tmp);
+		vdd->fw_up.read_status_value = (!rc ? tmp[0] : 0);
+		rc = of_property_read_u32(np, "samsung,firmware_update_done_check_read_value", tmp);
+		vdd->fw_up.read_done_check = (!rc ? tmp[0] : 0);
+
+		LCD_INFO("[FW_UP] E/W/R delay_us(%d/%d/%d) status_read_value (0x%x) rework_done_check_value(0x%x)\n",
+			vdd->fw_up.erase_delay_us, vdd->fw_up.write_delay_us, vdd->fw_up.read_delay_us,
+			vdd->fw_up.read_status_value, vdd->fw_up.read_done_check);
+	}
+
 	/* PAC */
 	vdd->br_info.common_br.pac = of_property_read_bool(np, "samsung,support_pac");
 	LCD_INFO("vdd->br_info.common_br.pac = %d\n", vdd->br_info.common_br.pac);
@@ -4865,6 +4935,11 @@ static void ss_panel_parse_dt(struct samsung_display_driver_data *vdd)
 	LCD_INFO("aot_enable : %s\n",
 		vdd->aot_enable ? "aot_enable support" : "aot_enable doesn't support");
 
+	/* Read module ID at probe timing */
+	vdd->support_early_id_read = of_property_read_bool(np, "samsung,support_early_id_read");
+	LCD_INFO("support_early_id_read : %s\n",
+		vdd->support_early_id_read ? "support" : "doesn't support");
+
 	/*
 		panel dsi/csi mipi strength value
 	*/
@@ -4914,6 +4989,10 @@ static void ss_panel_parse_dt(struct samsung_display_driver_data *vdd)
 	vdd->lp11_sleep_ms_time = (!rc ? tmp[0] : 0);
 	LCD_INFO("lp11_sleep_ms_time : %d\n",
 		vdd->lp11_sleep_ms_time);
+
+	rc = of_property_read_u32(np, "samsung,ddi_id_length", tmp);
+	vdd->dtsi_data.ddi_id_length = (!rc ? tmp[0] : 0);
+	LCD_INFO("ddi_id_length = [%d]\n", vdd->dtsi_data.ddi_id_length);
 }
 
 /***********/
@@ -5442,7 +5521,7 @@ end:
 struct samsung_display_driver_data *ss_get_vdd(enum ss_display_ndx ndx)
 {
 	if (ndx >= MAX_DISPLAY_NDX || ndx < 0) {
-		LCD_ERR("invalid ndx(%d)\n", ndx);
+		LCD_DEBUG("invalid ndx(%d)\n", ndx);
 		return NULL;
 	}
 
@@ -6409,11 +6488,13 @@ int ss_brightness_dcs(struct samsung_display_driver_data *vdd, int level, int ba
 		if ((vdd->br_info.common_br.finger_mask_hbm_on) && (backlight_origin == BACKLIGHT_NORMAL)) {/* finger mask hbm on & bl update from normal */
 			backup_acl = vdd->br_info.acl_status;
 
-			if (level != USE_CURRENT_BL_LEVEL)
+			if (level != USE_CURRENT_BL_LEVEL) {
 				backup_bl_level = level;
 
-			LCD_INFO("[FINGER_MASK]BACKLIGHT_NORMAL save backup_acl = %d, backup_level = %d, vdd->br_info.common_br.bl_level=%d\n", backup_acl, backup_bl_level, vdd->br_info.common_br.bl_level);
-			goto skip_bl_update;
+				LCD_INFO("[FINGER_MASK]BACKLIGHT_NORMAL save backup_acl = %d, backup_level = %d, vdd->br_info.common_br.bl_level=%d\n",
+					backup_acl, backup_bl_level, vdd->br_info.common_br.bl_level);
+				goto skip_bl_update;
+			}
 		}
 
 		/* From BACKLIGHT_FINGERMASK_ON
@@ -6421,8 +6502,6 @@ int ss_brightness_dcs(struct samsung_display_driver_data *vdd, int level, int ba
 		*   2. backup previous bl_level & acl value
 		*  From BACKLIGHT_FINGERMASK_OFF
 		*   1. restore backup bl_level & acl value
-		*  From BACKLIGHT_FINGERMASK_ON_SUSTAIN
-		*   1. brightness update with finger_bl_level.
 		*/
 
 		if (backlight_origin == BACKLIGHT_FINGERMASK_ON) {
@@ -6445,12 +6524,6 @@ int ss_brightness_dcs(struct samsung_display_driver_data *vdd, int level, int ba
 
 			LCD_INFO("[FINGER_MASK]BACKLIGHT_FINGERMASK_OFF turn off finger hbm & restore acl = %d, level = %d\n",
 				vdd->br_info.acl_status, level);
-		}
-		else if(backlight_origin == BACKLIGHT_FINGERMASK_ON_SUSTAIN) {
-			LCD_INFO("[FINGER_MASK]BACKLIGHT_FINGERMASK_ON_SUSTAIN \
-				send finger hbm & back up acl = %d, level = %d->%d\n",
-				vdd->br_info.acl_status, level,vdd->br_info.common_br.finger_mask_bl_level);
-			level = vdd->br_info.common_br.finger_mask_bl_level;
 		}
 	}
 
@@ -7315,10 +7388,7 @@ void ss_panel_vrr_switch(struct vrr_info *vrr)
 		vrr->cur_refresh_rate = adjusted_rr;
 		vrr->cur_sot_hs_mode = adjusted_hs;
 
-		if(vdd->br_info.common_br.finger_mask_hbm_on)
-			ss_brightness_dcs(vdd, 0, BACKLIGHT_FINGERMASK_ON_SUSTAIN);
-		else
-			ss_brightness_dcs(vdd, USE_CURRENT_BL_LEVEL, BACKLIGHT_NORMAL);
+		ss_brightness_dcs(vdd, USE_CURRENT_BL_LEVEL, BACKLIGHT_NORMAL);
 
 		/* HS <-> Normal mode: remove one black frame and restore to original brightness */
 		if (vrr->black_frame_mode == BLACK_FRAME_INSERT) {
@@ -7353,10 +7423,7 @@ void ss_panel_vrr_switch(struct vrr_info *vrr)
 		 * In BRR mode, SOT_HS mode is not changed.
 		 */
 		vrr->cur_refresh_rate = fps_brr;
-		if(vdd->br_info.common_br.finger_mask_hbm_on)
-			ss_brightness_dcs(vdd, 0, BACKLIGHT_FINGERMASK_ON_SUSTAIN);
-		else
-			ss_brightness_dcs(vdd, USE_CURRENT_BL_LEVEL, BACKLIGHT_NORMAL);
+		ss_brightness_dcs(vdd, USE_CURRENT_BL_LEVEL, BACKLIGHT_NORMAL);
 
 		if (brr->delay_frame_cnt <= 0) {
 			LCD_ERR("VRR: delay_frame_cnt: %d, set default value 4\n", brr->delay_frame_cnt);
@@ -7384,10 +7451,7 @@ void ss_panel_vrr_switch(struct vrr_info *vrr)
 				/* update current VRR mode before restore
 				 * SDE core clock to prevent screen noise
 				 */
-				if(vdd->br_info.common_br.finger_mask_hbm_on)
-					ss_brightness_dcs(vdd, 0, BACKLIGHT_FINGERMASK_ON_SUSTAIN);
-				else
-					ss_brightness_dcs(vdd, vrr->brr_bl_level, BACKLIGHT_NORMAL);
+				ss_brightness_dcs(vdd, vrr->brr_bl_level, BACKLIGHT_NORMAL);
 
 				goto brr_done;
 			}
@@ -7400,8 +7464,6 @@ void ss_panel_vrr_switch(struct vrr_info *vrr)
 		mutex_lock(&vrr->brr_lock);
 		if (vrr->brr_rewind_on) {
 			vrr->brr_rewind_on = false;
-			mutex_unlock(&vrr->brr_lock);
-
 			direction *= -1;
 
 			LCD_INFO("VRR: rewind BRR, direction: %d, adjusted_rr: %d -> %d\n",
@@ -7424,10 +7486,7 @@ void ss_panel_vrr_switch(struct vrr_info *vrr)
 	vrr->cur_refresh_rate = adjusted_rr;
 	vrr->cur_sot_hs_mode = adjusted_hs;
 
-	if(vdd->br_info.common_br.finger_mask_hbm_on)
-		ss_brightness_dcs(vdd, 0, BACKLIGHT_FINGERMASK_ON_SUSTAIN);
-	else
-		ss_brightness_dcs(vdd, USE_CURRENT_BL_LEVEL, BACKLIGHT_NORMAL);
+	ss_brightness_dcs(vdd, USE_CURRENT_BL_LEVEL, BACKLIGHT_NORMAL);
 
 brr_done:
 
@@ -7587,7 +7646,6 @@ int ss_panel_dms_switch(struct samsung_display_driver_data *vdd)
 				vrr->adjusted_refresh_rate == vrr->brr_tbl[vrr->brr_mode].fps_start &&
 				vrr->adjusted_sot_hs_mode == vrr->brr_tbl[vrr->brr_mode].sot_hs_base) {
 			vrr->brr_rewind_on = true;
-			mutex_unlock(&vrr->brr_lock);
 
 			LCD_INFO("VRR: new vrr (%dhz%s), set brr_rewind_on\n",
 					vrr->adjusted_refresh_rate,
@@ -7638,6 +7696,163 @@ void ss_set_panel_state(struct samsung_display_driver_data *vdd, enum ss_panel_p
 	LCD_ERR("set panel state %d\n", vdd->panel_state);
 
 	ss_notify_queue_work(vdd, PANEL_EVENT_STATE_CHANGED);
+}
+
+/* bring start time of gamma flash forward: first frame update -> display driver probe.
+ * As of now, gamma flash starts when bootanimation kickoff frame update.
+ *
+ * In that case, it causes below problem.
+ * 1) bootanimation turns on main and sub display.
+ * 2) bootanimation update one black frame to both displays.
+ * 3) bootanimation turns off sub dipslay, in case of folder open.
+ *    But, sub display gamma flash takes several seconds (about 3 sec in user binary),
+ *    so, it bootanimation waits for it, and both displays shows black screen for a while.
+ * 4) After sub display gamma flash is done and finish to turn off sub display,
+ *    bootanimation starts to draw animation on main display, and it is too late then expected..
+ *
+ * To avoid above issue, starts gamma flash earlyer, at display driver probe timing.
+ * For this, to do belows at driver probe timing.
+ * 1) start gamma flash only in case of splash mode on. Splash on mode means that bootlaoder already turned on mipi phy.
+ * 2) initialize mipi host, including enable mipi error interrupts, to avoid blocking mipi transmission.
+ * 3) disable autorefresh, which was disabled in first frame update, to prevent dsi fifo underrun error.
+ */
+int ss_early_display_init(struct samsung_display_driver_data *vdd)
+{
+	struct dsi_display *display;
+	struct drm_encoder *drm_enc;
+	int ret;
+
+	if (!vdd) {
+		LCD_ERR("error: vdd NULL\n");
+		return -ENODEV;
+	}
+
+	if (vdd->br_info.support_early_gamma_flash &&
+			vdd->br_info.flash_gamma_support &&
+			!vdd->br_info.flash_gamma_init_done &&
+			!work_busy(&vdd->br_info.flash_br_work.work)) {
+		LCD_INFO("early gamma flash\n");
+	} else if (vdd->support_early_id_read) {
+		LCD_INFO("early module ID read\n");
+	} else {
+		LCD_DEBUG("no action\n");
+		return 0;
+	}
+
+	LCD_INFO("ndx=%d: cur panel_state: %d\n", vdd->ndx, vdd->panel_state);
+
+	display = GET_DSI_DISPLAY(vdd);
+
+	if (!display || !display->bridge || !display->bridge->base.encoder) {
+		LCD_ERR("fail to get valid drm_enc\n");
+		return -ENODEV;
+	}
+
+	drm_enc = display->bridge->base.encoder;
+
+	/* disable autorefresh to prevent DSI FIFO underflow */
+	sde_encoder_prepare_commit(drm_enc);
+
+	/* set lcd id for getting proper mapping table */
+	if (vdd->ndx == PRIMARY_DISPLAY_NDX)
+		vdd->manufacture_id_dsi = get_lcd_attached("GET");
+	else if (vdd->ndx == SECONDARY_DISPLAY_NDX)
+		vdd->manufacture_id_dsi = get_lcd_attached_secondary("GET");
+
+	/* Panel revision selection */
+	if (IS_ERR_OR_NULL(vdd->panel_func.samsung_panel_revision))
+		LCD_ERR("no panel_revision_selection_error function\n");
+	else
+		vdd->panel_func.samsung_panel_revision(vdd);
+
+	/* in gamma flash work thread, it will initialize mipi host */
+	/* In case of autorefresh_fail, do gamma flash job in ss_event_frame_update()
+	 * which is called after RESET MDP to recover error status.
+	 * TODO: get proper phys_enc and check if phys_enc->enable_state = SDE_ENC_ERR_NEEDS_HW_RESET...
+	 */
+	if (vdd->is_autorefresh_fail) {
+		LCD_ERR("autorefresh failure error\n");
+		return -EINVAL;
+	}
+
+	/* early gamma flash */
+	if (vdd->br_info.support_early_gamma_flash) {
+		LCD_INFO("enQ gamma flash work\n");
+		queue_delayed_work(vdd->br_info.flash_br_workqueue, &vdd->br_info.flash_br_work, msecs_to_jiffies(0));
+	}
+
+	/* early module id read */
+	if (vdd->support_early_id_read) {
+		bool skip_host_deinit = true;
+		bool skip_restore_panel_state_off = true;
+
+		LCD_INFO("read module id\n");
+
+		/* display ctrl and mipi host init should be done in display_lock */
+		mutex_lock(&display->display_lock);
+		LCD_INFO("[%s] init host, support_early_gamma_flash: %d\n",
+				display->name, vdd->br_info.support_early_gamma_flash);
+		ret = dsi_display_ctrl_init(display);
+		if (ret) {
+			LCD_INFO("[%s] ret=%d, host was already initialized.. skip deinit in final state\n",
+					display->name, ret);
+			skip_host_deinit = true;
+			mutex_unlock(&display->display_lock);
+		} else {
+			skip_host_deinit = false;
+		}
+
+		/* set panel_state pwr on ready, to allow mipi transmission */
+		if (vdd->panel_state == PANEL_PWR_OFF) {
+			skip_restore_panel_state_off = false;
+			vdd->panel_state = PANEL_PWR_ON_READY;
+		}
+
+		/* Module info */
+		if (!vdd->module_info_loaded_dsi) {
+			if (IS_ERR_OR_NULL(vdd->panel_func.samsung_module_info_read))
+				LCD_ERR("no samsung_module_info_read function\n");
+			else
+				vdd->module_info_loaded_dsi = vdd->panel_func.samsung_module_info_read(vdd);
+		}
+
+		/* MDNIE X,Y */
+		if (!vdd->mdnie_loaded_dsi) {
+			if (IS_ERR_OR_NULL(vdd->panel_func.samsung_mdnie_read))
+				LCD_ERR("no samsung_mdnie_read function\n");
+			else
+				vdd->mdnie_loaded_dsi = vdd->panel_func.samsung_mdnie_read(vdd);
+		}
+
+		/* Panel Unique Cell ID */
+		if (!vdd->cell_id_loaded_dsi) {
+			if (IS_ERR_OR_NULL(vdd->panel_func.samsung_cell_id_read))
+				LCD_ERR("no samsung_cell_id_read function\n");
+			else
+				vdd->cell_id_loaded_dsi = vdd->panel_func.samsung_cell_id_read(vdd);
+		}
+
+		/* restore panel_state to poweroff
+		 * to prevent other mipi transmission before gfx HAL enable display.
+		 *
+		 * disp_on_pre == true means panel_state is already overwritten by gfx HAL,
+		 * so no more need to restore panel_state
+		 */
+		if (vdd->display_status_dsi.disp_on_pre)
+			skip_restore_panel_state_off = true;
+		if (!skip_restore_panel_state_off) {
+			LCD_INFO("[%s] restore panel state to off\n", display->name);
+			vdd->panel_state = PANEL_PWR_OFF;
+		}
+
+		if (!skip_host_deinit) {
+			LCD_INFO("[%s] deinit host\n", display->name);
+			(void)dsi_display_ctrl_deinit(display);
+			mutex_unlock(&display->display_lock);
+		}
+	}
+
+	return 0;
 }
 
 static int ss_gm2_ddi_flash_init(struct samsung_display_driver_data *vdd)

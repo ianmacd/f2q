@@ -35,6 +35,10 @@ enum sensor_retention_mode {
 };
 #endif
 
+#if defined(CONFIG_SEC_R8Q_PROJECT)
+#define HI847_SENSOR_ID   0x00
+#endif
+
 #if defined(CONFIG_CAMERA_ADAPTIVE_MIPI)
 #define FRONT_SENSOR_ID_IMX374 0x0374
 #define FRONT_SENSOR_ID_S5K3J1 0x30A1

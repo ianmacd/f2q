@@ -50,7 +50,7 @@ static struct cam_sensor_power_setting default_power_setting[] =
 	{SENSOR_CUSTOM_REG3,	CAM_V_CUSTOM3,	0,		2,		{}},
 	{SENSOR_MCLK,		0,		19200000,	1,		{}},
 	{SENSOR_CUSTOM_GPIO2,	CAM_VREG_MAX,	1,		1,		{}},
-#elif defined(CONFIG_SEC_F2Q_PROJECT)
+#elif defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 	{SENSOR_CUSTOM_REG1,	CAM_V_CUSTOM1,	1,		1,		{}},
 #endif
 	{SENSOR_VIO,		CAM_VIO,	1,		1,		{}},
@@ -88,7 +88,7 @@ static struct cam_sensor_power_setting default_power_down_setting[] =
 	{SENSOR_CUSTOM_REG3,	CAM_V_CUSTOM3,	0,		0,		{}},
 	{SENSOR_CUSTOM_REG2,	CAM_V_CUSTOM2,	0,		0,		{}},
 	{SENSOR_CUSTOM_REG1,	CAM_V_CUSTOM1,	0,		0,		{}},
-#elif defined(CONFIG_SEC_F2Q_PROJECT)
+#elif defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT)
 	{SENSOR_CUSTOM_REG1,	CAM_V_CUSTOM1,	0,		0,		{}},
 #endif
 	{SENSOR_VDIG,		CAM_VDIG,	0,		0,		{}},

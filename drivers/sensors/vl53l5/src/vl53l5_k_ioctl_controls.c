@@ -752,17 +752,22 @@ int vl53l5_ioctl_init(struct vl53l5_k_module_t *p_module)
 
 	vl53l5_k_log_debug("Lock");
 	mutex_lock(&p_module->mutex);
+#ifdef STM_VL53L5_SUPPORT_LEGACY_CODE
 	status = _check_state(p_module, VL53L5_STATE_PRESENT);
 	if (status != STATUS_OK) {
-#ifdef STM_VL53L5_SUPPORT_SEC_CODE
-		p_module->stdev.status_probe = -1;
-#endif
 		goto out_state;
 	}
+#endif
 #ifdef STM_VL53L5_SUPPORT_SEC_CODE
+	if (p_module->last_driver_error == VL53L5_PROBE_FAILED)
+		return VL53L5_PROBE_FAILED;
+
+	memset(&p_module->stdev, 0, sizeof(struct vl53l5_dev_handle_t));
+	memset(&p_module->comms_buffer, 0, VL53L5_COMMS_BUFFER_SIZE_BYTES);
+
 	vl53l5_k_power_onoff(p_module, p_module->iovdd_vreg, p_module->iovdd_vreg_name, 0);
 	vl53l5_k_power_onoff(p_module, p_module->avdd_vreg, p_module->avdd_vreg_name, 0);
-	usleep_range(5000, 5100);
+	usleep_range(10000, 10100);
 	vl53l5_k_power_onoff(p_module, p_module->avdd_vreg, p_module->avdd_vreg_name, 1);
 	usleep_range(1000, 1100);
 	vl53l5_k_power_onoff(p_module, p_module->iovdd_vreg, p_module->iovdd_vreg_name, 1);
@@ -854,6 +859,7 @@ int vl53l5_ioctl_init(struct vl53l5_k_module_t *p_module)
 	vl53l5_ioctl_set_device_parameters(p_module, NULL, VL53L5_CFG__STATIC__SS_4PC__VCSELCP_OFF);
 	usleep_range(1000, 1100);
 	p_module->stdev.last_dev_error = VL53L5_ERROR_NONE;
+	p_module->last_driver_error = STATUS_OK;
 	vl53l5_k_log_debug("Lock");
 	mutex_lock(&p_module->mutex);
 #endif
@@ -862,7 +868,9 @@ out:
 		status = vl53l5_read_device_error(&p_module->stdev, status);
 		vl53l5_k_log_error("Failed: %d", status);
 	}
+#ifdef STM_VL53L5_SUPPORT_LEGACY_CODE
 out_state:
+#endif
 	vl53l5_k_log_debug("Unlock");
 	mutex_unlock(&p_module->mutex);
 	LOG_FUNCTION_END(status);
@@ -1190,12 +1198,18 @@ int vl53l5_ioctl_stop(struct vl53l5_k_module_t *p_module, void __user *p, int mo
 
 	LOG_FUNCTION_START("");
 #ifdef STM_VL53L5_SUPPORT_SEC_CODE
-	if (p_module->state_preset == VL53L5_STATE_INITIALISED)
+	if (p_module->state_preset == VL53L5_STATE_LOW_POWER)
 		return status;
+
+	vl53l5_k_log_debug("Lock");
+	mutex_lock(&p_module->mutex);
+	status = _check_state(p_module, VL53L5_STATE_INITIALISED);
 #endif
+#ifdef STM_VL53L5_SUPPORT_LEGACY_CODE
 	vl53l5_k_log_debug("Lock");
 	mutex_lock(&p_module->mutex);
 	status = _check_state(p_module, VL53L5_STATE_RANGING);
+#endif
 
 	vl53l5_k_log_debug("Unlock");
 	mutex_unlock(&p_module->mutex);
@@ -1280,14 +1294,6 @@ out:
 		vl53l5_k_log_error("Failed: %d", status);
 		vl53l5_k_log_debug("Unlock");
 		mutex_unlock(&p_module->mutex);
-
-#ifdef STM_VL53L5_SUPPORT_SEC_CODE
-		{
-			int m_status;
-			m_status = vl53l5_ioctl_init(p_module);
-			vl53l5_k_log_info("status %d, reset status %d", status, m_status);
-		}
-#endif
 	}
 #ifdef STM_VL53L5_SUPPORT_SEC_CODE
 	else {

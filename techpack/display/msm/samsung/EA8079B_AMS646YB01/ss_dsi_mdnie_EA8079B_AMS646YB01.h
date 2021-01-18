@@ -7414,12 +7414,12 @@ static char DSI0_UI_AUTO_MDNIE_6[] = {
 	0x0c, // skin_boundary_parameter
 	0x0c, // grass_boundary_parameter
 	0x0c, // sky_boundary_paraneter
-	0x7f, // skin_boundary_parameter
+	0x79, // skin_boundary_parameter
 	0x00,
 	0x00,
-	0x03,
-	0x40,
-	0x00,
+	0x04,
+	0x1e,
+	0x80,
 	0x00,
 	0x02,
 	0x00, // grass_boundary_parameter
@@ -7441,9 +7441,9 @@ static char DSI0_UI_AUTO_MDNIE_6[] = {
 	0x00, // skin_boundary_parameter
 	0xff,
 	0x00,
-	0x80,
-	0x28,
-	0x7e,
+	0x86,
+	0x11,
+	0xac,
 	0x00,
 	0xff,
 	0x00, // grass_boundary_parameter
@@ -7464,12 +7464,12 @@ static char DSI0_UI_AUTO_MDNIE_6[] = {
 	0xb3,
 	0x00, // skin_boundary_parameter
 	0x04,
-	0x93,
-	0x7a,
+	0x8f,
 	0x00,
-	0x2f,
+	0x00,
+	0x87,
 	0x02,
-	0x08,
+	0x22,
 	0x0b, // grass_boundary_parameter
 	0x24,
 	0x0a,
@@ -7489,13 +7489,13 @@ static char DSI0_UI_AUTO_MDNIE_6[] = {
 	0x64, // skin_boundary_parameter
 	0x62, // grass_boundary_parameter
 	0x61, // sky_boundary_paraneter
-	0x20, // Skin Color Gain (0x00 ~ 0xFF)
+	0x12, // Skin Color Gain (0x00 ~ 0xFF)
 	0x80, // grass Color Gain (0x00 ~ 0xFF)
 	0x80, // sky Color Gain (0x00 ~ 0xFF)
-	0x8a, // Target Skin Color (Cb)
+	0x80, // Target Skin Color (Cb)
 	0x52, // Target grass Color (Cb)
 	0xae, // Target Sky Color (Cb)
-	0x80, // Target Skin Color (Cr)
+	0x86, // Target Skin Color (Cr)
 	0x69, // Target grass Color (Cr)
 	0x58, // Target Sky Color (Cr)
 	0x00, // Threshold Value of Skin Color Detection
@@ -7708,12 +7708,12 @@ static char DSI0_CAMERA_AUTO_MDNIE_6[] = {
 	0x0c, // skin_boundary_parameter
 	0x0c, // grass_boundary_parameter
 	0x0c, // sky_boundary_paraneter
-	0x7f, // skin_boundary_parameter
+	0x79, // skin_boundary_parameter
 	0x00,
 	0x00,
-	0x03,
-	0x40,
-	0x00,
+	0x04,
+	0x1e,
+	0x80,
 	0x00,
 	0x02,
 	0x00, // grass_boundary_parameter
@@ -7735,9 +7735,9 @@ static char DSI0_CAMERA_AUTO_MDNIE_6[] = {
 	0x00, // skin_boundary_parameter
 	0xff,
 	0x00,
-	0x80,
-	0x28,
-	0x7e,
+	0x86,
+	0x11,
+	0xac,
 	0x00,
 	0xff,
 	0x00, // grass_boundary_parameter
@@ -7758,12 +7758,12 @@ static char DSI0_CAMERA_AUTO_MDNIE_6[] = {
 	0xb3,
 	0x00, // skin_boundary_parameter
 	0x04,
-	0x93,
-	0x7a,
+	0x8f,
 	0x00,
-	0x2f,
+	0x00,
+	0x87,
 	0x02,
-	0x08,
+	0x22,
 	0x0b, // grass_boundary_parameter
 	0x24,
 	0x0a,
@@ -7783,13 +7783,13 @@ static char DSI0_CAMERA_AUTO_MDNIE_6[] = {
 	0x64, // skin_boundary_parameter
 	0x62, // grass_boundary_parameter
 	0x61, // sky_boundary_paraneter
-	0x20, // Skin Color Gain (0x00 ~ 0xFF)
+	0x24, // Skin Color Gain (0x00 ~ 0xFF)
 	0x80, // grass Color Gain (0x00 ~ 0xFF)
 	0x80, // sky Color Gain (0x00 ~ 0xFF)
-	0x8a, // Target Skin Color (Cb)
+	0x80, // Target Skin Color (Cb)
 	0x52, // Target grass Color (Cb)
 	0xae, // Target Sky Color (Cb)
-	0x80, // Target Skin Color (Cr)
+	0x86, // Target Skin Color (Cr)
 	0x69, // Target grass Color (Cr)
 	0x58, // Target Sky Color (Cr)
 	0x00, // Threshold Value of Skin Color Detection
@@ -8000,12 +8000,12 @@ static char DSI0_GALLERY_AUTO_MDNIE_6[] = {
 	0x0c, // skin_boundary_parameter
 	0x0c, // grass_boundary_parameter
 	0x0c, // sky_boundary_paraneter
-	0x7f, // skin_boundary_parameter
+	0x79, // skin_boundary_parameter
 	0x00,
 	0x00,
-	0x03,
-	0x40,
-	0x00,
+	0x04,
+	0x1e,
+	0x80,
 	0x00,
 	0x02,
 	0x00, // grass_boundary_parameter
@@ -8027,9 +8027,9 @@ static char DSI0_GALLERY_AUTO_MDNIE_6[] = {
 	0x00, // skin_boundary_parameter
 	0xff,
 	0x00,
-	0x80,
-	0x28,
-	0x7e,
+	0x86,
+	0x11,
+	0xac,
 	0x00,
 	0xff,
 	0x00, // grass_boundary_parameter
@@ -8050,12 +8050,12 @@ static char DSI0_GALLERY_AUTO_MDNIE_6[] = {
 	0xb3,
 	0x00, // skin_boundary_parameter
 	0x04,
-	0x93,
-	0x7a,
+	0x8f,
 	0x00,
-	0x2f,
+	0x00,
+	0x87,
 	0x02,
-	0x08,
+	0x22,
 	0x0b, // grass_boundary_parameter
 	0x24,
 	0x0a,
@@ -8075,13 +8075,13 @@ static char DSI0_GALLERY_AUTO_MDNIE_6[] = {
 	0x64, // skin_boundary_parameter
 	0x62, // grass_boundary_parameter
 	0x61, // sky_boundary_paraneter
-	0x20, // Skin Color Gain (0x00 ~ 0xFF)
+	0x24, // Skin Color Gain (0x00 ~ 0xFF)
 	0x80, // grass Color Gain (0x00 ~ 0xFF)
 	0x80, // sky Color Gain (0x00 ~ 0xFF)
-	0x8a, // Target Skin Color (Cb)
+	0x80, // Target Skin Color (Cb)
 	0x52, // Target grass Color (Cb)
 	0xae, // Target Sky Color (Cb)
-	0x80, // Target Skin Color (Cr)
+	0x86, // Target Skin Color (Cr)
 	0x69, // Target grass Color (Cr)
 	0x58, // Target Sky Color (Cr)
 	0x00, // Threshold Value of Skin Color Detection

@@ -282,7 +282,13 @@ struct cam_req_mgr_link_control {
 #define CAM_MEM_MMU_MAX_HANDLE                  16
 
 /* Maximum allowed buffers in existence */
+#if defined(SAMSUNG_SUPPORT_REMOSAIC_MFNR_FEATURE) || defined(CONFIG_SAMSUNG_SUPPORT_REMOSAIC_MFNR_FEATURE)
+//Remosaic MFNR needs more buffer requirement as it adds one more Graph
+//Remosaic MFNR uses NonZSL Graph, other captures use ZSL Graph  
+#define CAM_MEM_BUFQ_MAX                        1200
+#else
 #define CAM_MEM_BUFQ_MAX                        1024
+#endif
 
 #define CAM_MEM_MGR_SECURE_BIT_POS              15
 #define CAM_MEM_MGR_HDL_IDX_SIZE                15
