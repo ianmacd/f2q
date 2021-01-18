@@ -11,7 +11,13 @@
 #include <media/cam_req_mgr.h>
 #include "cam_mem_mgr_api.h"
 
+#if defined(CONFIG_SAMSUNG_SUPPORT_REMOSAIC_MFNR_FEATURE)
+//Remosaic MFNR needs more buffer requirement as it adds one more Graph
+//Remosaic MFNR uses NonZSL Graph, other captures use ZSL Graph
+#define CAM_MEM_BUFQ_MAX 1200
+#else
 #define CAM_MEM_BUFQ_MAX 1024
+#endif
 
 /* Enum for possible mem mgr states */
 enum cam_mem_mgr_state {

@@ -25,7 +25,7 @@
 
 #define CAM_SYNC_OBJ_NAME_LEN           64
 #define CAM_SYNC_MAX_OBJS               1024
-#if defined(CONFIG_SEC_F2Q_PROJECT)
+#if defined(CONFIG_SEC_F2Q_PROJECT) || defined(CONFIG_SEC_VICTORY_PROJECT) || defined(CONFIG_SEC_R8Q_PROJECT)
 #define CAM_SYNC_MAX_V4L2_EVENTS        200
 #else
 #define CAM_SYNC_MAX_V4L2_EVENTS        100

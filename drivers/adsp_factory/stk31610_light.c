@@ -20,6 +20,10 @@
 #define VENDOR "Sensortek"
 #define CHIP_ID "STK31610"
 
+#define ASCII_TO_DEC(x) (x - 48)
+
+int brightness;
+
 enum {
 	OPTION_TYPE_COPR_ENABLE,
 	OPTION_TYPE_BOLED_ENABLE,
@@ -103,6 +107,29 @@ static ssize_t light_get_dhr_sensor_info_show(struct device *dev,
 
 	mutex_unlock(&data->light_factory_mutex);
 	return data->msg_buf[light_idx][0];
+}
+
+static ssize_t light_brightness_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	pr_info("[FACTORY] %s: %d\n", __func__, brightness);
+	return snprintf(buf, PAGE_SIZE, "%d\n", brightness);
+}
+
+static ssize_t light_brightness_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct adsp_data *data = dev_get_drvdata(dev);
+	uint16_t light_idx = get_light_sidx(data);
+
+	brightness = ASCII_TO_DEC(buf[0]) * 100 + ASCII_TO_DEC(buf[1]) * 10 + ASCII_TO_DEC(buf[2]);
+	pr_info("[FACTORY] %s: %d\n", __func__, brightness);
+
+	adsp_unicast(&brightness, sizeof(brightness), light_idx, 0, MSG_TYPE_SET_CAL_DATA);
+
+	pr_info("[FACTORY] %s: done\n", __func__);
+
+	return size;
 }
 
 static ssize_t light_lcd_onoff_store(struct device *dev,
@@ -306,6 +333,7 @@ static DEVICE_ATTR(name, 0444, light_name_show, NULL);
 static DEVICE_ATTR(lux, 0444, light_raw_data_show, NULL);
 static DEVICE_ATTR(raw_data, 0444, light_raw_data_show, NULL);
 static DEVICE_ATTR(dhr_sensor_info, 0444, light_get_dhr_sensor_info_show, NULL);
+static DEVICE_ATTR(brightness, 0664, light_brightness_show, light_brightness_store);
 
 static struct device_attribute *light_attrs[] = {
 	&dev_attr_vendor,
@@ -313,6 +341,7 @@ static struct device_attribute *light_attrs[] = {
 	&dev_attr_lux,
 	&dev_attr_raw_data,
 	&dev_attr_dhr_sensor_info,
+	&dev_attr_brightness,
 	&dev_attr_lcd_onoff,
 	&dev_attr_light_circle,
 	&dev_attr_register_write,
@@ -327,6 +356,8 @@ static int __init stk33617_light_factory_init(void)
 	ss_panel_notifier_register(&light_panel_data_notifier);
 #endif
 	pr_info("[FACTORY] %s\n", __func__);
+
+	brightness = 0;
 
 	return 0;
 }

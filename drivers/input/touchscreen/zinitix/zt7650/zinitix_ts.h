@@ -48,6 +48,38 @@
 #include <linux/sec_debug.h>
 #endif
 
+/* sponge enable feature */
+#define ZT_SPONGE_MODE_SPAY				1
+#define ZT_SPONGE_MODE_AOD				2
+#define ZT_SPONGE_MODE_SINGLETAP		3
+#define ZT_SPONGE_MODE_PRESS			4
+#define ZT_SPONGE_MODE_DOUBLETAP_WAKEUP	5
+
+#define ZT_SPONGE_LP_FEATURE		0x0000
+#define ZT_SPONGE_TOUCHBOX_W_OFFSET 0x0002
+#define ZT_SPONGE_TOUCHBOX_H_OFFSET 0x0004
+#define ZT_SPONGE_TOUCHBOX_X_OFFSET 0x0006
+#define ZT_SPONGE_TOUCHBOX_Y_OFFSET 0x0008
+#define ZT_SPONGE_AOD_ACTIVE_INFO	0x000A
+
+#define ZT_SPONGE_UTC				0x0010
+#define ZT_SPONGE_FOD_PROPERTY		0x0014
+#define ZT_SPONGE_FOD_INFO			0x0015
+#define ZT_SPONGE_FOD_POSITION		0x0019
+#define ZT_SPONGE_FOD_RECT			0x004B
+
+
+
+#define ZT_SPONGE_DUMP_FORMAT		0x00F0
+#define ZT_SPONGE_DUMP_CNT			0x00F1
+#define ZT_SPONGE_DUMP_CUR_IDX		0x00F2
+#define ZT_SPONGE_DUMP_START		0x00F4
+
+#define ZT_SPONGE_READ_INFO			0xA401
+#define ZT_SPONGE_READ_REG			0xA402
+#define ZT_SPONGE_WRITE_REG			0xA403
+#define ZT_SPONGE_SYNC_REG			0xA404
+
 struct zt_ts_platform_data {
 	u32 irq_gpio;
 	u32 gpio_int;
@@ -69,6 +101,7 @@ struct zt_ts_platform_data {
 	int bringup;
 	bool mis_cal_check;
 	bool support_dex;
+	bool support_open_short_test;
 	u16 pat_function;
 	u16 afe_base;
 	void (*register_cb)(void *);

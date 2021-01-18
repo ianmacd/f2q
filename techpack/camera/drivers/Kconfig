@@ -255,3 +255,11 @@ config USE_CAMERA_HW_BIG_DATA
 	default n
 	---help---
 	CAMERA HW SYS.
+
+config SAMSUNG_SUPPORT_REMOSAIC_MFNR_FEATURE
+        tristate "Remosaic MFNR Support"
+        depends on SPECTRA_CAMERA
+        default n
+        ---help---
+        Enables support for Remosaic MFNR
+

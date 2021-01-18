@@ -1651,6 +1651,7 @@ static int ss_module_info_read(struct samsung_display_driver_data *vdd)
 	int hour, min;
 	int x, y;
 	int mdnie_tune_index = 0;
+	int ret;
 
 	if (IS_ERR_OR_NULL(vdd)) {
 		LCD_ERR("Invalid data vdd : 0x%zx", (size_t)vdd);
@@ -1658,7 +1659,11 @@ static int ss_module_info_read(struct samsung_display_driver_data *vdd)
 	}
 
 	if (ss_get_cmds(vdd, RX_MODULE_INFO)->count) {
-		ss_panel_data_read(vdd, RX_MODULE_INFO, buf, LEVEL1_KEY);
+		ret = ss_panel_data_read(vdd, RX_MODULE_INFO, buf, LEVEL1_KEY);
+		if (ret) {
+			LCD_ERR("fail to read module ID, ret: %d", ret);
+			return false;
+		}
 
 		/* Manufacture Date */
 

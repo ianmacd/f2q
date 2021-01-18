@@ -1224,7 +1224,7 @@ static QDF_STATUS dp_rx_defrag_reo_reinject(struct dp_peer *peer,
 
 	link_desc_va = dp_rx_cookie_2_link_desc_va(soc, &buf_info);
 
-	qdf_assert(link_desc_va);
+	qdf_assert_always(link_desc_va);
 
 	msdu0 = hal_rx_msdu0_buffer_addr_lsb(soc->hal_soc, link_desc_va);
 	nbuf_len = qdf_nbuf_len(head) - RX_PKT_TLVS_LEN;
@@ -1896,6 +1896,7 @@ uint32_t dp_rx_frag_handle(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 
 	msdu = rx_desc->nbuf;
 
+	dp_ipa_handle_rx_buf_smmu_mapping(soc, msdu, false);
 	qdf_nbuf_unmap_single(soc->osdev, msdu,	QDF_DMA_FROM_DEVICE);
 	rx_desc->unmapped = 1;
 

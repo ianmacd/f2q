@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2019 Samsung Electronics Co. Ltd.
+ * Copyright (C) 2017-2020 Samsung Electronics Co. Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9,7 +9,7 @@
  */
 
 /* usb hw param */
-/* usb notify layer v3.4 */
+/* usb notify layer v3.5 */
 
 #define MAX_HWPARAM_STR_LEN 1024
 #define MAX_HWPARAM_STRING 10
@@ -63,10 +63,11 @@ enum usb_hw_param {
 	USB_HALL_FOLDING_COUNT,
 	USB_CCIC_USB_KILLER_COUNT,
 	USB_CCIC_FWUP_ERROR_COUNT,
+	USB_MUIC_BC12_RETRY_SUCCESS_COUNT,
+	USB_CCIC_PR_SWAP_COUNT,
+	USB_CCIC_DR_SWAP_COUNT,
+	USB_CLIENT_ANDROID_AUTO_RESET_POPUP_COUNT,
 	USB_CCIC_VERSION,
-	USB_CCIC_HW_PARAM_MAX,
+	USB_CCIC_HW_PARAM_MAX
 };
 
-#if defined(CONFIG_USB_TYPEC_MANAGER_NOTIFIER)
-unsigned long manager_hw_param_update(int param);
-#endif

@@ -386,8 +386,7 @@ static int set_online(int event, int state)
 	if (event == NOTIFY_EVENT_HMD_EXT_CURRENT) {
 		value.intval = state;
 		psy_otg->desc->set_property(psy_otg, POWER_SUPPLY_PROP_VOLTAGE_MAX, &value);
-	}
-	else {
+	} else {
 		if (state)
 			value.intval = SEC_BATTERY_CABLE_SMART_OTG;
 		else
@@ -464,6 +463,37 @@ static int usb_set_chg_current(int state)
 }
 #endif
 
+#if defined(CONFIG_USB_HW_PARAM)
+static int is_skip_list(int index)
+{
+	int ret = 0;
+
+	switch (index) {
+	case USB_CCIC_VR_USE_COUNT:
+	case USB_HOST_CLASS_COMM_COUNT:
+	case USB_HOST_CLASS_PHYSICAL_COUNT:
+	case USB_HOST_CLASS_IMAGE_COUNT:
+	case USB_HOST_CLASS_PRINTER_COUNT:
+	case USB_HOST_CLASS_CDC_COUNT:
+	case USB_HOST_CLASS_CSCID_COUNT:
+	case USB_HOST_CLASS_CONTENT_COUNT:
+	case USB_HOST_CLASS_VIDEO_COUNT:
+	case USB_HOST_CLASS_WIRELESS_COUNT:
+	case USB_HOST_CLASS_MISC_COUNT:
+	case USB_HOST_CLASS_APP_COUNT:
+	case USB_HOST_CLASS_VENDOR_COUNT:
+	case USB_CCIC_FWUP_ERROR_COUNT:
+	case USB_CCIC_VERSION:
+		ret = 1;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+#endif
+
 static struct otg_notify sec_otg_notify = {
 	.vbus_drive	= otg_accessory_power,
 	.set_host = qcom_set_host,
@@ -483,6 +513,9 @@ static struct otg_notify sec_otg_notify = {
 	.set_battcall = set_online,
 #ifdef CONFIG_USB_CHARGING_EVENT
 	.set_chg_current = usb_set_chg_current,
+#endif
+#if defined(CONFIG_USB_HW_PARAM)
+	.is_skip_list = is_skip_list,
 #endif
 	.pre_peri_delay_us = 6,
 };

@@ -4,7 +4,7 @@ How to build Module for Platform
 
 [Step to build]
 1. Get android open source.
-    : version info - Android 10.0
+    : version info - Android 11.0
     ( Download site : http://source.android.com )
 
 2. Copy module that you want to build - to original android open source
@@ -49,19 +49,20 @@ PRODUCT_PACKAGES += \
    and then, you will be able to download what you want. 
    You might save time in finding the right one by making use of the search keyword below.
 
-  - DeXonPC.apk : "DeXonPC"
-	- SBrowser_12.1_Removable.apk : "SBrowser"
+	- ShareLive.apk : "ShareLive"
+	- BixbyVisionFramework3.5.apk : "BixbyVisionFramework"
+  - Fmm.apk : "FMM"
+	- SamsungPass.apk : "SamsungPass"
+	- SamsungMessages_12.apk : "Messaging"	
+	- LiveStickers.apk : "LiveStickers"
+	- AREmoji.apk : "AREmoji"
+  - SamsungCamera.apk : "Camera"
+	- SamsungCalendar.apk : "SamsungCalendar"
+	- MdecService.apk : "MdecService"
+	- DeXonPC.apk : "DeXonPC"		
+  - SBrowser_13.0_Removable.apk : "SBrowser"
 	- SamsungConnect.apk : "SamsungConnect"
 	- KidsHome.apk : "KidsHome"
 	- Notes40_Removable.apk : "Samsung Notes"
-	- AREmoji.apk : "AREmoji"
-	- SamsungCamera.apk : "Camera"
-  - LiveStickers.apk : "LiveStickers"	
 	- SmartSwitch.apk : "Smart Switch"
 	- VoiceNote_5.0.apk : "Voice Recorder"
-  - ShareLive.apk : "ShareLive"
-	- BixbyVisionFramework3.5.apk : "BixbyVisionFramework"
-	- Fmm.apk : "FMM"
-	- SamsungMessages_11.apk : "Messaging"
-	- MdecService.apk : "MdecService"
-	- HoneyBoard.apk : "HoneyBoard"

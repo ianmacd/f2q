@@ -137,9 +137,8 @@ static void stm32_pogo_kpd_event(struct stm32_keypad_dev *stm32, u16 *key_values
 				stm32->keycode[code], stm32->keycode[code],
 				keydata.row, keydata.col);
 #else
-		input_info(true, &stm32->pdev->dev, "%s (%d:%d)\n",
-				keydata.press != STM32_KPC_DATA_PRESS ? "R" : "P",
-				keydata.row, keydata.col);
+		input_info(true, &stm32->pdev->dev, "%s\n",
+				keydata.press != STM32_KPC_DATA_PRESS ? "R" : "P");
 #endif
 		input_event(stm32->input_dev, EV_MSC, MSC_SCAN, code);
 		input_report_key(stm32->input_dev, stm32->keycode[code], keydata.press);
